@@ -1,0 +1,1796 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<title>曲柄存在条件探索｜平面四杆机构虚拟实验台</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M5 26 L11 9 L24 7 L27 26' fill='none' stroke='%231e2933' stroke-width='3' stroke-linejoin='round'/%3E%3Ccircle cx='5' cy='26' r='3' fill='%23d64541'/%3E%3Ccircle cx='27' cy='26' r='3' fill='%233a6fd0'/%3E%3C/svg%3E">
+<style>
+:root {
+  color-scheme: light;
+  --paper: #ffffff;
+  --panel: #f4f6f8;
+  --ink: #1e2933;
+  --muted: #5b6875;
+  --line: #d9dee3;
+  --warn: #9a3b12;
+  --warn-bg: #fff3e8;
+  --note-bg: #eef4fb;
+  --ab: #d64541; --bc: #d9930d; --cd: #2e9461; --da: #3a6fd0;
+  --radius: 8px;
+  font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", "Source Han Sans SC", system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--paper); color: var(--ink); }
+body { font-size: 16px; line-height: 1.55; -webkit-text-size-adjust: 100%; }
+:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+button, input { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid #1f5fa8; outline-offset: 2px; }
+
+.app { max-width: 1440px; margin: 0 auto; padding: 14px 20px 10px; }
+
+/* 顶部：目标与途径 */
+.top { display: grid; grid-template-columns: auto 1fr; gap: 4px 28px; align-items: start; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.top h1 { font-size: 24px; line-height: 1.3; margin: 0; letter-spacing: .02em; grid-row: 1 / span 2; }
+.goals p { margin: 0; font-size: 16px; }
+.goals b { font-weight: 600; color: var(--muted); }
+.ways { margin: 2px 0 0; font-size: 14px; color: var(--muted); grid-column: 2; }
+
+/* 主体布局 */
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 20px; padding-top: 14px; align-items: start; }
+.stage { position: relative; height: 480px; height: clamp(360px, calc(100vh - 290px), 760px); background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+#view { display: block; width: 100%; height: 100%; touch-action: none; user-select: none; -webkit-user-select: none; }
+
+.readouts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+.ro { border-left: 5px solid var(--c, #999); background: var(--panel); border-radius: 0 var(--radius) var(--radius) 0; padding: 8px 12px; min-width: 0; }
+.ro .name { font-weight: 600; font-size: 16px; }
+.ro .role { font-size: 13px; color: var(--muted); margin-left: 6px; font-weight: 400; }
+.ro .ang { float: right; font-variant-numeric: tabular-nums; font-size: 15px; color: var(--muted); }
+.ro .cap { font-size: 15px; margin-top: 2px; }
+.ro .cap.full { font-weight: 600; }
+.ro .cap small { font-weight: 400; color: var(--muted); font-size: 13px; }
+.ro.empty { color: var(--muted); grid-column: 1 / -1; border-left-color: var(--line); }
+
+.notice { min-height: 1.55em; margin: 8px 0 0; font-size: 15px; }
+.notice:empty { display: none; }
+.notice.warn { background: var(--warn-bg); color: var(--warn); padding: 6px 10px; border-radius: 6px; }
+.notice.info { background: var(--note-bg); padding: 6px 10px; border-radius: 6px; }
+.notice button { margin-left: 8px; }
+.tip { margin: 6px 0 0; font-size: 13px; color: var(--muted); }
+
+/* 控制区 */
+.panel { background: var(--panel); border-radius: var(--radius); padding: 4px 16px 14px; }
+.group { padding: 12px 0; border-bottom: 1px solid var(--line); }
+.group:last-child { border-bottom: 0; }
+.group h2 { font-size: 15px; margin: 0 0 8px; font-weight: 600; }
+.group h2 .unit { font-weight: 400; color: var(--muted); font-size: 13px; }
+
+.len { display: grid; grid-template-columns: 44px 1fr 66px; gap: 8px; align-items: center; margin-bottom: 6px; }
+.len .tag { font-weight: 700; font-size: 15px; display: flex; align-items: center; gap: 5px; }
+.len .tag i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; background: var(--c); }
+.len input[type=number] { width: 66px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 6px; background: #fff; text-align: right; font-variant-numeric: tabular-nums; }
+.len input[type=number].bad { border-color: var(--warn); background: var(--warn-bg); }
+input[type=range] { --c: var(--ink); -webkit-appearance: none; appearance: none; width: 100%; height: 28px; margin: 0; background: transparent; cursor: pointer; }
+input[type=range]::-webkit-slider-runnable-track { height: 6px; border-radius: 3px; background: #d3d9df; }
+input[type=range]::-moz-range-track { height: 6px; border-radius: 3px; background: #d3d9df; }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; margin-top: -7px; border-radius: 50%; background: var(--c); border: 3px solid #fff; box-shadow: 0 0 0 1px #8a949e; }
+input[type=range]::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: var(--c); border: 3px solid #fff; box-shadow: 0 0 0 1px #8a949e; }
+input[type=range]:disabled { opacity: .4; cursor: not-allowed; }
+.len input[type=range] { --c: inherit; }
+
+.hint { margin: 2px 0 6px; font-size: 14px; color: var(--warn); min-height: 0; }
+.hint:empty { display: none; }
+
+.presets { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+.presets-label { font-size: 14px; color: var(--muted); margin-right: 2px; }
+.chip { min-width: 40px; min-height: 36px; padding: 4px 10px; border: 1px solid var(--line); border-radius: 18px; background: #fff; cursor: pointer; font-weight: 600; }
+.chip:hover { border-color: var(--ink); }
+
+.seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; border: 1px solid var(--ink); border-radius: 7px; overflow: hidden; }
+.seg button { border: 0; border-right: 1px solid var(--ink); background: #fff; min-height: 40px; padding: 4px 6px; cursor: pointer; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 6px; }
+.seg button:last-child { border-right: 0; }
+.seg button i { width: 10px; height: 10px; border-radius: 2px; background: var(--c); display: inline-block; }
+.seg button[aria-checked="true"] { background: var(--ink); color: #fff; }
+.seg button[aria-checked="true"] i { outline: 2px solid #fff; }
+.seg button small { font-weight: 400; font-size: 12px; opacity: .85; }
+
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+.btn { min-height: 40px; padding: 6px 14px; border: 1px solid var(--ink); border-radius: 7px; background: #fff; cursor: pointer; }
+.btn.primary { background: var(--ink); color: #fff; min-width: 86px; }
+.btn.wide { width: 100%; }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.field { display: grid; grid-template-columns: 72px 1fr 58px; gap: 8px; align-items: center; margin: 4px 0 8px; font-size: 15px; }
+.field output { text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
+.field-block { margin: 4px 0 10px; }
+.field-label { display: block; font-size: 15px; margin-bottom: 4px; }
+.check { font-size: 14px; color: var(--muted); display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
+
+/* 按需揭示 */
+.rel { margin-top: 10px; font-size: 15px; }
+.rel table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; margin-bottom: 8px; }
+.rel td { padding: 3px 4px; border-bottom: 1px solid var(--line); }
+.rel td:last-child { text-align: right; }
+.rel .cmp { font-size: 18px; font-weight: 600; text-align: center; padding: 6px 0; background: #fff; border-radius: 6px; margin-bottom: 8px; font-variant-numeric: tabular-nums; }
+.rel p { margin: 6px 0; }
+.rel .rule { background: #fff; border-radius: 6px; padding: 8px 10px; margin-top: 8px; }
+.rel .rule ul { margin: 4px 0; padding-left: 20px; }
+.rel .ok { color: #1f7a4a; font-weight: 600; }
+.rel .caution { color: var(--warn); }
+.link-name { font-weight: 700; }
+
+.foot { margin-top: 14px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); }
+
+/* 平板竖屏、手机 */
+@media (max-width: 980px) {
+  .layout { grid-template-columns: 1fr; }
+  .stage { height: auto; aspect-ratio: 4 / 3; max-height: 70vh; }
+  .top { grid-template-columns: 1fr; }
+  .top h1 { grid-row: auto; font-size: 21px; }
+  .ways { grid-column: 1; }
+}
+@media (max-width: 560px) {
+  .app { padding: 10px 12px; }
+  .goals p { font-size: 15px; }
+  .readouts { grid-template-columns: 1fr; }
+  .stage { aspect-ratio: 5 / 4; }
+}
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+
+/* GPT-6: 轻量化探索，隐藏结论区；图上直接修改设计杆长。 */
+.stage-wrap { min-width: 0; }
+#view .length-grip { cursor: ew-resize; touch-action: none; }
+.privacy-note { margin: 10px 0 0; color: var(--muted); font-size: 12px; }
+.plain-link { border: 0; padding: 0 2px; background: none; color: #365b85; text-decoration: underline; cursor: pointer; font-size: inherit; }
+#recordDetail { margin-left: 4px; }
+@media (max-width: 980px) {
+  .layout { display: block; }
+  .stage-wrap { position: -webkit-sticky; position: sticky; top: 0; z-index: 5; background: white; padding-bottom: 6px; }
+  .stage { height: 300px; height: min(42vh, 345px); min-height: 205px; aspect-ratio: auto; }
+  .panel { margin-top: 10px; }
+}
+@media (max-width: 560px) {
+  .stage { height: 260px; height: min(36vh, 285px); min-height: 200px; aspect-ratio: auto; }
+  .app { padding: 8px 12px 14px; }
+  .top { padding-bottom: 8px; }
+  .goals p { font-size: 14px; }
+  .ways { font-size: 12px; }
+}
+
+.top .privacy-note{grid-column:2;margin:0;font-size:12px}
+
+/* 兼容：旧版安卓 WebView / X5 内核（不支持 CSS Grid、flex gap）时的退化布局 */
+@supports not (display: grid) {
+  .layout, .top { display: block; }
+  .len, .field { display: -webkit-box; display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; }
+  .len .tag { width: 44px; -webkit-flex: none; flex: none; }
+  .len input[type=range], .field input[type=range] { -webkit-flex: 1; flex: 1; min-width: 0; margin: 0 8px; }
+  .len input[type=number] { -webkit-flex: none; flex: none; }
+  .field > span { width: 72px; -webkit-flex: none; flex: none; }
+  .field output { width: 58px; -webkit-flex: none; flex: none; }
+  .seg { display: -webkit-box; display: -webkit-flex; display: flex; }
+  .seg button { -webkit-flex: 1; flex: 1; }
+  .presets .chip, .row > * { margin-right: 6px; margin-bottom: 4px; }
+}
+/* 脚本未运行时的提示（脚本启动成功后会移除） */
+.boot-msg { position: absolute; left: 12px; right: 12px; top: 50%; -webkit-transform: translateY(-50%); transform: translateY(-50%); margin: 0; text-align: center; font-size: 14px; color: var(--muted); }
+.boot-msg.err { color: #9a3b12; }
+@media(max-width:980px){.top .privacy-note{grid-column:1}}
+/* v3：记录状态、控件区加载占位、诊断条 */
+.rec-status { display: inline-block; margin-left: 6px; color: var(--muted); }
+.rec-status.warn { color: var(--warn); }
+.ctl-boot { margin: 6px 0; font-size: 14px; color: var(--muted); }
+.ctl-boot.err { color: #9a3b12; }
+/* 手机/平板上机构图吸顶：让浏览器自动滚动（如输入框获得焦点、键盘弹出）时把目标停在吸顶图下方，而不是被图盖住 */
+@media (max-width: 980px) { html { scroll-padding-top: 360px; scroll-padding-top: calc(min(42vh, 345px) + 16px); } }
+@media (max-width: 560px) { html { scroll-padding-top: 300px; scroll-padding-top: calc(min(36vh, 285px) + 16px); } }
+.diag { position: fixed; left: 8px; right: 8px; bottom: 8px; z-index: 50; max-height: 40vh; overflow: auto; background: #fff8f2; border: 1px solid #e3b48f; border-radius: 6px; padding: 6px 8px; font: 12px/1.45 ui-monospace, Menlo, Consolas, monospace; color: #5a2a0c; white-space: pre-wrap; }
+
+
+/* 四组结构判断＋离线作业导出，无评分反馈。 */
+.reflection {margin: 18px 0 12px;padding:16px 18px;background:#f4f6f8;border:1px solid var(--line);border-radius:8px;}
+.reflection h2 {font-size:18px;margin:0 0 8px;}
+.reflection label {display:block;font-size:15px;margin:0 0 8px;}
+.reflection textarea {display:block;width:100%;min-height:90px;padding:10px 12px;border:1px solid #b8c1cb;border-radius:7px;background:#fff;color:var(--ink);font:inherit;resize:vertical;line-height:1.6;}
+.submit-line{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:12px;}
+.submit-status{font-size:13px;color:#34664b;}
+.submit-status.error{color:#a33a17;}
+.submit-footnote{font-size:12px;color:var(--muted);margin:10px 0 0;}
+@media(max-width:560px){.reflection{padding:12px}.submit-line .btn{width:100%}}
+
+/* 四组作业区：无自动判分、无后台提交。 */
+.assignment-grid{display:grid;grid-template-columns:minmax(190px,290px) 1fr;gap:16px;align-items:end}
+.assignment-field{display:block;font-size:15px;font-weight:600}
+.assignment-field input{display:block;width:100%;height:42px;border:1px solid #b8c1cb;border-radius:7px;padding:7px 11px;background:white;margin-top:5px;font-weight:400}
+.assignment-state{padding:9px 12px;background:var(--panel);border-radius:7px;font-size:14px;min-height:42px}
+.assignment-choice{border:0;padding:12px 0;margin:10px 0 0;min-width:0}
+.assignment-choice legend{font-size:15px;font-weight:600;padding:0}
+.choice-line{display:flex;flex-wrap:wrap;gap:10px 18px;margin-top:8px}
+.choice-line label{display:inline-flex;align-items:center;gap:5px;font-size:14px;cursor:pointer}
+.choice-line input{accent-color:#1e2933}
+.wps-open{display:inline-flex;align-items:center;text-decoration:none}
+.wps-open[hidden], .json-backup[hidden]{display:none!important}
+.json-backup{margin-top:10px}
+.json-backup summary{font-size:13px;color:#526372;cursor:pointer}
+.json-backup textarea{width:100%;min-height:110px;font-family:monospace;font-size:12px;margin-top:5px}
+@media(max-width:560px){.assignment-grid{grid-template-columns:1fr}.choice-line{gap:8px 14px}.submit-line .btn{width:100%}}
+
+/* 2026-10-19 最终验收：固定桌面绘图区和页面滚动锚定，SVG 动画只改内部属性。 */
+html { overflow-anchor: none; scrollbar-gutter: stable; }
+body, .app, .layout, .stage-wrap, .reflection { overflow-anchor: none; }
+@media (min-width:981px) {
+  .stage { height: 520px; min-height: 520px; max-height: 520px; contain: layout paint; }
+}
+.stage, #view { overflow: hidden; }
+.assignment-grid { align-items: center; }
+.quiz-note { font-size: 13px; color: var(--muted); margin: 0 0 12px; }
+.quiz-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 12px; }
+.quiz-card { border: 1px solid var(--line); border-radius: 8px; background: #fff; padding: 12px 14px; min-width: 0; }
+.quiz-card h3 { font-size: 16px; margin: 0 0 6px; }
+.quiz-parameters { color: var(--ink); font-size: 14px; line-height: 1.65; margin: 0 0 8px; font-variant-numeric: tabular-nums; }
+.quiz-card fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+.quiz-card legend { font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+.quiz-card .choice-line { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 12px; }
+.quiz-card .choice-line label { font-size: 13px; min-height: 28px; }
+#assignmentStatus { min-height: 23px; }
+@media(max-width:780px) { .quiz-grid { grid-template-columns: 1fr; } }
+@media(max-width:440px) { .quiz-card .choice-line { grid-template-columns: 1fr 1fr; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <h1>曲柄存在条件探索</h1>
+    <div class="goals">
+      <p><b>问题 1</b>　四根杆长满足什么关系时，机构中可能有能整周转动的连架杆（曲柄）？</p>
+      <p><b>问题 2</b>　杆长完全不变，只改选机架，为什么机构类型和曲柄情况会不同？</p>
+    </div>
+    <p class="ways">可以这样探索：保持机架不变，改变杆长；保持杆长不变，改选机架；比较哪根连架杆能整周转动，尝试找出规律。</p>
+    <p class="privacy-note">本页仅在浏览器中暂存姓名、四组作答与有效探索记录，不联网上传；作业文件由你自行上传至教师提供的 WPS 表单。</p>
+  </header>
+
+  <main class="layout">
+    <section class="stage-wrap" aria-label="机构主视图">
+      <div class="stage" id="stage">
+        <svg id="view" role="img" aria-label="平面四杆机构运动图"></svg>
+        <p class="boot-msg" id="bootMsg">正在加载……如果一直显示这行字，说明当前查看器没有运行页面脚本。请点右上角“…”，选择“用浏览器打开”或“用其他应用打开”（如 Chrome、手机自带浏览器）。</p>
+      </div>
+    </section>
+
+    <aside class="panel" aria-label="控制区">
+      <div class="group">
+        <h2>杆长 <span class="unit">mm · 可拖动图中杆件中点的小圆点改变长度</span></h2>
+        <div id="lengths"><p class="ctl-boot" id="ctlBoot">杆长控件加载中……</p></div>
+        <p class="hint" id="lenHint" aria-live="polite"></p>
+        <div class="presets">
+          <span class="presets-label">探索示例</span>
+          <button type="button" class="chip" data-preset="A">示例1</button>
+          <button type="button" class="chip" data-preset="B">示例2</button>
+          <button type="button" class="chip" data-preset="C">示例3</button>
+          <button type="button" class="chip" data-preset="D">示例4</button>
+        </div>
+      </div>
+
+      <div class="group">
+        <h2>机架（固定不动的杆）</h2>
+        <div class="seg" id="frameSeg" role="radiogroup" aria-label="选择机架"></div>
+      </div>
+
+      <div class="group">
+        <h2>运动</h2>
+        <div class="row">
+          <button type="button" class="btn primary" id="playBtn">暂停</button>
+          <button type="button" class="btn" id="resetBtn">重置</button>
+        </div>
+        <label class="field">
+          <span>速度</span>
+          <input type="range" id="speed" min="10" max="120" step="5" value="45">
+          <output id="speedOut">45°/s</output>
+        </label>
+        <div class="field-block">
+          <span class="field-label">主动件</span>
+          <div class="seg" id="driverSeg" role="radiogroup" aria-label="选择主动件"></div>
+        </div>
+        <label class="field">
+          <span>手动调角</span>
+          <input type="range" id="angle" min="0" max="359" step="1" value="0" aria-label="主动件转角（相对机架）">
+          <output id="angleOut">0°</output>
+        </label>
+        <div class="row">
+          <button type="button" class="btn" id="branchBtn">换一种装配方式</button>
+          <label class="check"><input type="checkbox" id="showReach"> 显示铰点可达范围</label>
+        </div>
+      </div>
+
+    </aside>
+  </main>
+
+
+  <section class="reflection" aria-label="机构类型判断与作业导出">
+    <h2>机构类型判断与探索作业</h2>
+    <div class="assignment-grid">
+      <label class="assignment-field">姓名（必填）
+        <input id="studentName" type="text" maxlength="24" autocomplete="name" placeholder="请输入姓名">
+      </label>
+      <div class="assignment-state" id="assignmentState" aria-live="polite">机构参数加载中……</div>
+    </div>
+    <p class="quiz-note">请根据各组杆长与指定机架判断，不提供题目机构动画。四组均须作答，不会立即显示对错。</p>
+    <div class="quiz-grid" id="quizGrid">
+      <div class="quiz-card" data-quiz="A">
+        <h3>第 A 组</h3>
+        <p class="quiz-parameters">AB=42，BC=73，CD=89，DA=112 mm；固定机架：AB</p>
+        <fieldset><legend>请选择机构类型（单选）</legend>
+        <div class="choice-line"><label><input type="radio" name="quiz_A" value="双曲柄机构"> 双曲柄机构</label><label><input type="radio" name="quiz_A" value="曲柄摇杆机构"> 曲柄摇杆机构</label><label><input type="radio" name="quiz_A" value="双摇杆机构"> 双摇杆机构</label><label><input type="radio" name="quiz_A" value="特殊/临界机构"> 特殊/临界机构</label></div></fieldset>
+      </div>
+      <div class="quiz-card" data-quiz="B">
+        <h3>第 B 组</h3>
+        <p class="quiz-parameters">AB=48，BC=76，CD=93，DA=115 mm；固定机架：BC</p>
+        <fieldset><legend>请选择机构类型（单选）</legend>
+        <div class="choice-line"><label><input type="radio" name="quiz_B" value="双曲柄机构"> 双曲柄机构</label><label><input type="radio" name="quiz_B" value="曲柄摇杆机构"> 曲柄摇杆机构</label><label><input type="radio" name="quiz_B" value="双摇杆机构"> 双摇杆机构</label><label><input type="radio" name="quiz_B" value="特殊/临界机构"> 特殊/临界机构</label></div></fieldset>
+      </div>
+      <div class="quiz-card" data-quiz="C">
+        <h3>第 C 组</h3>
+        <p class="quiz-parameters">AB=51，BC=78，CD=94，DA=123 mm；固定机架：CD</p>
+        <fieldset><legend>请选择机构类型（单选）</legend>
+        <div class="choice-line"><label><input type="radio" name="quiz_C" value="双曲柄机构"> 双曲柄机构</label><label><input type="radio" name="quiz_C" value="曲柄摇杆机构"> 曲柄摇杆机构</label><label><input type="radio" name="quiz_C" value="双摇杆机构"> 双摇杆机构</label><label><input type="radio" name="quiz_C" value="特殊/临界机构"> 特殊/临界机构</label></div></fieldset>
+      </div>
+      <div class="quiz-card" data-quiz="D">
+        <h3>第 D 组</h3>
+        <p class="quiz-parameters">AB=55，BC=85，CD=105，DA=135 mm；固定机架：DA</p>
+        <fieldset><legend>请选择机构类型（单选）</legend>
+        <div class="choice-line"><label><input type="radio" name="quiz_D" value="双曲柄机构"> 双曲柄机构</label><label><input type="radio" name="quiz_D" value="曲柄摇杆机构"> 曲柄摇杆机构</label><label><input type="radio" name="quiz_D" value="双摇杆机构"> 双摇杆机构</label><label><input type="radio" name="quiz_D" value="特殊/临界机构"> 特殊/临界机构</label></div></fieldset>
+      </div>
+    </div>
+    <div class="submit-line">
+      <button type="button" class="btn primary" id="exportJsonBtn">生成 JSON 作业文件</button>
+      <button type="button" class="btn" id="copyJsonBtn">复制编码后的 JSON</button>
+      <a class="btn wps-open" id="wpsFormLink" href="#" target="_blank" rel="noopener noreferrer" hidden>打开 WPS 作业收集表单</a>
+    </div>
+    <p id="assignmentStatus" class="submit-status" role="status" aria-live="polite"></p>
+    <p class="submit-footnote">导出的 JSON 包含完整有效操作记录和四题作答，内部内容经过压缩编码（不是加密）。请将该文件上传至教师指定的 WPS 表单；微信内无法下载时，可使用“复制编码后的 JSON”作为备用。</p>
+    <details class="json-backup" id="jsonBackupPanel" hidden>
+      <summary>显示编码后的作业数据（备用）</summary>
+      <textarea id="jsonPreview" readonly rows="6" aria-label="编码后的 JSON 数据"></textarea>
+    </details>
+  </section>
+
+</div>
+<script>
+/* 兼容层：在旧版安卓 WebView（微信 X5 / TBS、部分“HTML 查看器”）里补齐页面用到的少量新接口，
+   并在脚本出错时把错误显示在画面上，而不是一片空白。 */
+(function () {
+  /* 启动前出错：机构图区与杆长控件区都显示错误原因（而不是两块空白）；
+     启动后出错：底部显示一条诊断信息，画面继续运行。加 ?debug=1 可常驻显示诊断。 */
+  var diagLines = [];
+  function diag(msg) {
+    diagLines.push(msg); if (diagLines.length > 12) diagLines.shift();
+    var d = document.getElementById('diag');
+    if (!d && document.body) { d = document.createElement('div'); d.id = 'diag'; d.className = 'diag'; d.setAttribute('role', 'status'); document.body.appendChild(d); }
+    if (d) d.textContent = diagLines.join('\n');
+  }
+  function showBootError(msg) {
+    var text = '页面脚本出错：' + msg + '。请截图发给老师，或改用手机自带浏览器 / Chrome 打开。';
+    var b = document.getElementById('bootMsg');
+    if (b) { b.className = 'boot-msg err'; b.textContent = text; }
+    var c = document.getElementById('ctlBoot');
+    if (c) { c.className = 'ctl-boot err'; c.textContent = text; }
+    diag('[启动错误] ' + msg);
+  }
+  window.__showBootError = showBootError;
+  window.__diag = diag;
+  window.addEventListener('error', function (e) {
+    var msg = (e && e.message ? e.message : '未知错误') + (e && e.lineno ? ' @行' + e.lineno : '');
+    if (!window.__appStarted) showBootError(msg); else diag('[运行错误] ' + msg);
+  });
+  if (window.NodeList && !NodeList.prototype.forEach) NodeList.prototype.forEach = Array.prototype.forEach;
+  if (window.Element && !Element.prototype.matches) Element.prototype.matches = Element.prototype.webkitMatchesSelector || Element.prototype.msMatchesSelector;
+  if (window.Element && !Element.prototype.closest) Element.prototype.closest = function (sel) {
+    var n = this; while (n && n.nodeType === 1) { if (n.matches(sel)) return n; n = n.parentNode; } return null;
+  };
+  if (typeof Object.assign !== 'function') Object.assign = function (t) {
+    for (var i = 1; i < arguments.length; i++) { var s = arguments[i]; if (s) for (var k in s) if (Object.prototype.hasOwnProperty.call(s, k)) t[k] = s[k]; }
+    return t;
+  };
+  if (!Math.hypot) Math.hypot = function () { var s = 0; for (var i = 0; i < arguments.length; i++) s += arguments[i] * arguments[i]; return Math.sqrt(s); };
+  if (!window.performance) window.performance = {};
+  if (!performance.now) { var t0 = Date.now(); performance.now = function () { return Date.now() - t0; }; }
+  if (!window.requestAnimationFrame) window.requestAnimationFrame = window.webkitRequestAnimationFrame || function (cb) { return setTimeout(function () { cb(performance.now()); }, 16); };
+})();
+</script>
+<script>
+/*!
+ * fourbar-core.js — 平面铰链四杆机构几何闭环求解内核（曲柄存在条件专题用）
+ * 来源：mechanical-exploration v1.1.0 的 js/linkage.js，几何求解与连续推进部分原样保留；
+ *       删去了本专题不用的急回（quickReturn）、传动角（gammaExtremes/muOfRho）、采样（sampleCycle）、
+ *       行程计时（StrokeTracker）。本专题对保留部分重新做了独立测试（tests/core.test.js）。
+ *
+ * 约定
+ *  - 构件闭环 A-B-C-D-A，杆件编号 0:AB 1:BC 2:CD 3:DA；铰点编号 0:A 1:B 2:C 3:D。
+ *  - 任意一杆可作机架（frame = 杆号 k）。机架两端：左固定铰 = 铰点 (k+1)%4，右固定铰 = 铰点 k。
+ *    左连架杆 = 杆 (k+1)%4，连杆 = 杆 (k+2)%4，右连架杆 = 杆 (k+3)%4。
+ *  - 模型坐标为数学坐标（y 向上），左固定铰在 (0,0)，右固定铰在 (r0,0)。
+ *  - 主动件（driver）为左或右连架杆；θ 为主动杆在世界坐标中的方位角（逆时针为正）。
+ *  - 装配支路 σ = ±1：σ=+1 时，在常见“上方”姿态为开式（四边形不自交），σ=-1 为其镜像（交叉式）。
+ *
+ * 核心事实（见 docs/待GPT独立审核.md 第 3 节推导）
+ *  - 设 ρ = |X - P_out|（主动杆活动铰到从动杆固定铰距离），闭环有解 ⇔ |rC - rOut| ≤ ρ ≤ rC + rOut。
+ *  - ρ² = rIn² + r0² - 2 rIn r0 cosψ，ψ = θ - θF（θF 为主动杆固定铰指向从动杆固定铰的方向）。
+ *    由此可解析得到主动件输入角可行域（整周 / 一个区间 / 两个对称区间 / 无解）。
+ *  - 非临界机构（s+l ≠ p+q）中，h = 0 只发生在输入极限位置，故连续运动中 σ 保持不变；
+ *    临界机构（s+l = p+q）存在“变点”：h = 0 但输入可越过，此处运动分支不唯一，单独处理。
+ *  - 输出处的压力角/传动角只取决于 ρ：cosμ = (rC² + rOut² - ρ²)/(2 rC rOut)，γ = min(μ, 180°-μ)。
+ */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory();
+  else root.FourBar = factory();
+})(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+
+  var VERSION = '1.1.0-crank';
+  var PI = Math.PI, TWO_PI = 2 * Math.PI, DEG = PI / 180;
+  var LINK_NAMES = ['AB', 'BC', 'CD', 'DA'];
+  var JOINT_NAMES = ['A', 'B', 'C', 'D'];
+
+  /** 数值容差（相对于四杆长度之和 S） */
+  var TOL = {
+    len: 1e-9,          // 长度等式判断：|x| ≤ 1e-9·S 视为相等（滑块为整数，等式在浮点下是精确的）
+    nearCritical: 0.02, // |s+l-(p+q)| ≤ 2%·S 视为“接近临界”（仅用于操作提示）
+    closure: 1e-7       // 闭环校验：杆长误差 ≤ 1e-7·S
+  };
+  /** 奇异位置（铰点重合，ρ=0）处的越过量：运动不停在恰好重合的那一点，而是越过 1e-6 rad（约 0.00006°），
+   *  画面上无法分辨；越过后由切线连续规则选择分支，并发出 kind='coincident' 的变点事件供页面提示。 */
+  var SING_EPS = 1e-6;
+  /** 静止起步时用于构造“假定的上一位置”的回退角（与子步同量级） */
+  var VIRT_STEP = 0.25 * DEG;
+
+  function normAngle(a) { a = a % TWO_PI; return a < 0 ? a + TWO_PI : a; }          // [0,2π)
+  function wrapPi(a) { a = normAngle(a); return a > PI ? a - TWO_PI : a; }          // (-π,π]
+  function toArr(L) { return Array.isArray(L) ? L.slice(0, 4).map(Number) : [L.AB, L.BC, L.CD, L.DA].map(Number); }
+  function sum(arr) { return arr.reduce(function (s, x) { return s + x; }, 0); }
+  function clamp(x, a, b) { return x < a ? a : x > b ? b : x; }
+  function cross(ax, ay, bx, by) { return ax * by - ay * bx; }
+
+  /* ---------------- 拓扑：机架选择 ---------------- */
+  function topology(frame) {
+    var k = ((frame % 4) + 4) % 4;
+    return {
+      frame: k,
+      leftLink: (k + 1) % 4, coupler: (k + 2) % 4, rightLink: (k + 3) % 4,
+      leftPivot: (k + 1) % 4, rightPivot: k,
+      leftMoving: (k + 2) % 4, rightMoving: (k + 3) % 4
+    };
+  }
+
+  /* ---------------- 几何：长度 + 机架 + 主动件 ---------------- */
+  function makeGeom(lengths, frame, driver) {
+    var len = toArr(lengths);
+    var t = topology(frame);
+    driver = driver === 'right' ? 'right' : 'left';
+    var r0 = len[t.frame];
+    var OL = { x: 0, y: 0 }, OR = { x: r0, y: 0 };
+    var g = {
+      lengths: len, frame: t.frame, driver: driver, topo: t, r0: r0, OL: OL, OR: OR,
+      S: sum(len), rC: len[t.coupler], couplerLink: t.coupler
+    };
+    if (driver === 'left') {
+      g.Pin = OL; g.Pout = OR; g.thetaF = 0; g.sd = 1;
+      g.rIn = len[t.leftLink]; g.rOut = len[t.rightLink];
+      g.inLink = t.leftLink; g.outLink = t.rightLink;
+      g.inPivot = t.leftPivot; g.outPivot = t.rightPivot;
+      g.inMoving = t.leftMoving; g.outMoving = t.rightMoving;
+    } else {
+      g.Pin = OR; g.Pout = OL; g.thetaF = PI; g.sd = -1;
+      g.rIn = len[t.rightLink]; g.rOut = len[t.leftLink];
+      g.inLink = t.rightLink; g.outLink = t.leftLink;
+      g.inPivot = t.rightPivot; g.outPivot = t.leftPivot;
+      g.inMoving = t.rightMoving; g.outMoving = t.leftMoving;
+    }
+    return g;
+  }
+
+  /* ---------------- 杆长关系（只做计算，展示与否由页面决定） ---------------- */
+  function lengthStats(lengths) {
+    var len = toArr(lengths), S = sum(len);
+    var idx = [0, 1, 2, 3].sort(function (i, j) { return len[i] - len[j] || i - j; });
+    var s = len[idx[0]], l = len[idx[3]], p = len[idx[1]], q = len[idx[2]];
+    var g = s + l - (p + q), tol = TOL.len * S;
+    var shortest = [0, 1, 2, 3].filter(function (i) { return Math.abs(len[i] - s) <= tol; });
+    var longest = [0, 1, 2, 3].filter(function (i) { return Math.abs(len[i] - l) <= tol; });
+    var closeMargin = (S - l) - l; // >0 可装配；=0 只能拉成一直线；<0 不能装配
+    return {
+      lengths: len, S: S, s: s, l: l, p: p, q: q, sl: s + l, pq: p + q, g: g,
+      relation: g < -tol ? 'lt' : (g > tol ? 'gt' : 'eq'),
+      nearCritical: Math.abs(g) <= TOL.nearCritical * S,
+      shortest: shortest, longest: longest,
+      closable: closeMargin > tol, flat: Math.abs(closeMargin) <= tol
+    };
+  }
+
+  /* ---------------- 主动件输入角可行域（解析） ---------------- */
+  function inputRange(g) {
+    var rIn = g.rIn, r0 = g.r0, rC = g.rC, rOut = g.rOut, tol = TOL.len * g.S;
+    if (!(rIn > tol && r0 > tol && rC > tol && rOut > tol)) return { type: 'none', reason: 'zero-length', intervals: [], criticals: [] };
+    var rhoMax = rC + rOut, rhoMin = Math.abs(rC - rOut);
+    var maxRho = rIn + r0, minRho = Math.abs(rIn - r0);
+    if (minRho > rhoMax + tol || maxRho < rhoMin - tol) return { type: 'none', reason: 'no-closure', intervals: [], criticals: [] };
+    var den = 2 * rIn * r0, criticals = [];
+    var d1 = maxRho - rhoMax;  // 上界约束 ρ ≤ rhoMax 是否起作用
+    var d2 = minRho - rhoMin;  // 下界约束 ρ ≥ rhoMin 是否起作用
+    var alpha = null, beta = null;
+    if (d1 > tol) alpha = Math.acos(clamp((rIn * rIn + r0 * r0 - rhoMax * rhoMax) / den, -1, 1)); // ψ∈[-α,α]
+    else if (Math.abs(d1) <= tol) criticals.push(PI);   // ψ=π 处 ρ 恰好等于 rC+rOut：四杆共线变点
+    if (d2 < -tol) beta = Math.acos(clamp((rIn * rIn + r0 * r0 - rhoMin * rhoMin) / den, -1, 1)); // ψ∈[β,2π-β]
+    else if (Math.abs(d2) <= tol) criticals.push(0);    // ψ=0 处 ρ 恰好等于 |rC-rOut|
+    var F = g.thetaF, out = { criticals: criticals.map(function (c) { return F + c; }), alpha: alpha, beta: beta };
+    out.criticalInfo = out.criticals.map(function (c) { return criticalKind(g, c); });
+    if (alpha === null && beta === null) { out.type = 'full'; out.intervals = [{ lo: F, hi: F + TWO_PI }]; return out; }
+    if (alpha !== null && beta === null) { out.type = 'interval'; out.intervals = [{ lo: F - alpha, hi: F + alpha }]; }
+    else if (alpha === null && beta !== null) { out.type = 'interval'; out.intervals = [{ lo: F + beta, hi: F + TWO_PI - beta }]; }
+    else {
+      if (beta > alpha + 1e-12) return { type: 'none', reason: 'no-closure', intervals: [], criticals: [] };
+      out.type = 'two-intervals';
+      out.intervals = [{ lo: F + beta, hi: F + alpha }, { lo: F - alpha, hi: F - beta }];
+    }
+    out.intervals.forEach(function (iv) {
+      iv.span = iv.hi - iv.lo;
+      // 区间内部的变点（如临界曲柄摇杆由摇杆驱动时）
+      iv.criticals = []; iv.criticalInfo = [];
+      out.criticals.forEach(function (c, ci) {
+        var v = angleInInterval(c, iv);
+        if (v !== null) { iv.criticals.push(v); iv.criticalInfo.push(out.criticalInfo[ci]); }
+      });
+    });
+    if (out.intervals.every(function (iv) { return iv.span < 1e-9; })) { out.type = 'rigid'; }
+    return out;
+  }
+
+  /** 若角 a（任意展开）落在区间 [lo,hi] 内（模 2π），返回区间内的展开值，否则 null */
+  function angleInInterval(a, iv, eps) {
+    eps = eps || 1e-9;
+    var k = Math.floor((iv.lo - a) / TWO_PI);
+    for (var j = k - 1; j <= k + 2; j++) {
+      var v = a + j * TWO_PI;
+      if (v >= iv.lo - eps && v <= iv.hi + eps) return clamp(v, iv.lo, iv.hi);
+    }
+    return null;
+  }
+
+  /**
+   * 变点的种类（只在 s+l=p+q 的临界机构中出现）：
+   *  - 'coincident'：主动杆活动铰与从动杆固定铰重合（r_in=r0 且 r_c=r_out，ρ=0），或从动杆活动铰与主动杆固定铰重合
+   *    （r_c=r_in 且 r_out=r0）。此刻有两个铰点重合，重合点两侧的构件可以绕它一起自由转动，运动走向不确定。
+   *  - 'collinear'：四杆共线但没有铰点重合（如平行四边形拉直时）。
+   * 返回 {kind, moving, fixed}：moving/fixed 为重合的活动铰、固定铰编号（仅 coincident）。
+   */
+  function criticalKind(g, thc) {
+    var tolc = 1e-7 * g.S;
+    var X = { x: g.Pin.x + g.rIn * Math.cos(thc), y: g.Pin.y + g.rIn * Math.sin(thc) };
+    var vx = g.Pout.x - X.x, vy = g.Pout.y - X.y, rho = Math.hypot(vx, vy);
+    if (rho <= tolc) return { kind: 'coincident', moving: g.inMoving, fixed: g.outPivot };
+    var a = (g.rC * g.rC - g.rOut * g.rOut + rho * rho) / (2 * rho);
+    var Y = { x: X.x + a * vx / rho, y: X.y + a * vy / rho };
+    if (Math.hypot(Y.x - g.Pin.x, Y.y - g.Pin.y) <= tolc) return { kind: 'coincident', moving: g.outMoving, fixed: g.inPivot };
+    return { kind: 'collinear' };
+  }
+  /** 当前几何（机架 + 主动件）下所有变点及种类，供页面提示 */
+  function singularities(g) {
+    var r = inputRange(g);
+    return (r.criticals || []).map(function (c, i) {
+      var info = r.criticalInfo[i];
+      return { theta: c, kind: info.kind, moving: info.moving, fixed: info.fixed,
+        movingName: info.kind === 'coincident' ? JOINT_NAMES[info.moving] : null, fixedName: info.kind === 'coincident' ? JOINT_NAMES[info.fixed] : null };
+    });
+  }
+  /** 若 θ 距离某个“ρ=0 型”重合变点不到 SING_EPS，返回该变点（展开角），否则 null */
+  function coincidentNear(m, theta) {
+    var r = m.range, list, info;
+    if (r.type === 'full') { list = r.criticals; info = r.criticalInfo; }
+    else if (r.intervals[m.iv]) { list = r.intervals[m.iv].criticals; info = r.intervals[m.iv].criticalInfo; }
+    if (!list) return null;
+    for (var i = 0; i < list.length; i++) {
+      if (!info[i] || info[i].kind !== 'coincident' || info[i].moving !== m.g.inMoving) continue; // 只有 ρ=0 型会令 solve 失效
+      var v = angleInInterval(list[i], { lo: theta - 2 * SING_EPS, hi: theta + 2 * SING_EPS }, 0);
+      if (v !== null && Math.abs(v - theta) < SING_EPS) return v;
+    }
+    return null;
+  }
+
+  /* ---------------- 位置求解 ---------------- */
+  function solve(g, theta, sigma) {
+    var c = Math.cos(theta), s = Math.sin(theta);
+    var X = { x: g.Pin.x + g.rIn * c, y: g.Pin.y + g.rIn * s };
+    var vx = g.Pout.x - X.x, vy = g.Pout.y - X.y, rho = Math.hypot(vx, vy);
+    var tol = TOL.len * g.S;
+    if (rho < tol) return { ok: false, reason: 'coincident', theta: theta, X: X, rho: rho };
+    var rC = g.rC, rOut = g.rOut;
+    if (rho > rC + rOut + tol || rho < Math.abs(rC - rOut) - tol) return { ok: false, reason: 'no-closure', theta: theta, X: X, rho: rho };
+    var a = (rC * rC - rOut * rOut + rho * rho) / (2 * rho);
+    var h = Math.sqrt(Math.max(0, rC * rC - a * a));
+    var ux = vx / rho, uy = vy / rho, nx = -uy, ny = ux;
+    var sg = (sigma === -1 ? -1 : 1) * g.sd;
+    var Y = { x: X.x + a * ux + sg * h * nx, y: X.y + a * uy + sg * h * ny };
+    var cosMu = clamp((rC * rC + rOut * rOut - rho * rho) / (2 * rC * rOut), -1, 1);
+    var mu = Math.acos(cosMu);
+    var J = [];
+    J[g.inPivot] = g.Pin; J[g.outPivot] = g.Pout; J[g.inMoving] = X; J[g.outMoving] = Y;
+    return {
+      ok: true, theta: theta, sigma: sigma === -1 ? -1 : 1, X: X, Y: Y, rho: rho, h: h,
+      hNorm: h / Math.min(rC, rOut),
+      mu: mu, gamma: Math.min(mu, PI - mu), // 输出处传动角（几何量）
+      phi: Math.atan2(Y.y - g.Pout.y, Y.x - g.Pout.x), // 从动杆方位角
+      joints: J
+    };
+  }
+
+  /** 闭环误差：四根杆的实际长度与设定值之差的最大绝对值 */
+  function closureError(g, cfg) {
+    var J = cfg.joints, e = 0;
+    for (var i = 0; i < 4; i++) {
+      var P = J[i], Q = J[(i + 1) % 4];
+      e = Math.max(e, Math.abs(Math.hypot(Q.x - P.x, Q.y - P.y) - g.lengths[i]));
+    }
+    return e;
+  }
+
+  /** 由现有铰点位置换算出“换一根连架杆做主动件”后的 θ 与 σ（同一姿态，不跳变） */
+  function stateFromJoints(g, J) {
+    var X = J[g.inMoving], Y = J[g.outMoving];
+    var theta = Math.atan2(X.y - g.Pin.y, X.x - g.Pin.x);
+    var ux = g.Pout.x - X.x, uy = g.Pout.y - X.y;
+    var cr = cross(ux, uy, Y.x - X.x, Y.y - X.y) * g.sd;
+    return { theta: theta, sigma: cr < 0 ? -1 : 1 };
+  }
+
+  /* ---------------- 分类（以实际可达运动为准） ---------------- */
+  var TYPE_NAMES = { 'crank-rocker': '曲柄摇杆机构', 'double-crank': '双曲柄机构', 'double-rocker': '双摇杆机构', 'none': '不能装配', 'rigid': '不能运动' };
+  function classify(lengths, frame) {
+    var st = lengthStats(lengths), t = topology(frame);
+    var res = { stats: st, frame: t.frame, topo: t };
+    if (st.s <= TOL.len * Math.max(st.S, 1)) { res.type = 'none'; res.reason = 'zero-length'; res.name = TYPE_NAMES.none; res.leftFull = res.rightFull = false; return res; }
+    if (!st.closable) {
+      res.type = st.flat ? 'rigid' : 'none';
+      res.name = TYPE_NAMES[res.type];
+      res.leftFull = res.rightFull = false;
+      return res;
+    }
+    var rl = inputRange(makeGeom(lengths, frame, 'left')), rr = inputRange(makeGeom(lengths, frame, 'right'));
+    res.leftRange = rl; res.rightRange = rr;
+    res.leftFull = rl.type === 'full'; res.rightFull = rr.type === 'full';
+    if (res.leftFull && res.rightFull) res.type = 'double-crank';
+    else if (res.leftFull || res.rightFull) { res.type = 'crank-rocker'; res.crankSide = res.leftFull ? 'left' : 'right'; }
+    else res.type = 'double-rocker';
+    res.name = TYPE_NAMES[res.type];
+    res.critical = st.relation === 'eq';
+    res.nearCritical = st.nearCritical && !res.critical;
+    // 最短杆位置（仅在最短杆唯一时有意义）
+    if (st.shortest.length === 1) {
+      var si = st.shortest[0];
+      res.shortestRole = si === t.frame ? 'frame' : (si === t.coupler ? 'coupler' : 'side');
+    } else res.shortestRole = 'tie';
+    // 杆长条件判据（仅严格不等时给出“规则预测”，用于验证页与自动测试）
+    if (st.relation === 'lt') res.rulePrediction = { frame: 'double-crank', side: 'crank-rocker', coupler: 'double-rocker' }[res.shortestRole] || null;
+    else if (st.relation === 'gt') res.rulePrediction = 'double-rocker';
+    else res.rulePrediction = null; // 临界：不按一般三类直接处理
+    res.ruleAgrees = res.rulePrediction === null ? null : res.rulePrediction === res.type;
+    // 特殊形状
+    var L = st.lengths, tl = TOL.len * st.S;
+    if (Math.abs(L[0] - L[2]) <= tl && Math.abs(L[1] - L[3]) <= tl) res.special = 'parallelogram';
+    else if ((Math.abs(L[0] - L[1]) <= tl && Math.abs(L[2] - L[3]) <= tl) || (Math.abs(L[1] - L[2]) <= tl && Math.abs(L[3] - L[0]) <= tl)) res.special = 'kite';
+    return res;
+  }
+
+  /* ---------------- 运动控制：连续跟踪 ---------------- */
+  /**
+   * 创建运动状态。opts.theta 初始主动角（可选），opts.sigma 装配支路（默认 +1）。
+   */
+  function createMotion(g, opts) {
+    opts = opts || {};
+    var range = inputRange(g);
+    var m = { g: g, range: range, sigma: opts.sigma === -1 ? -1 : 1, dir: opts.dir === -1 ? -1 : 1, travel: 0, iv: 0, cfg: null, prevY: null, prevTheta: null, ok: false };
+    if (range.type === 'none' || range.type === 'rigid') { m.theta = opts.theta || 0; return m; }
+    var th = (opts.theta === undefined || opts.theta === null) ? defaultTheta(range) : opts.theta;
+    placeAt(m, th);
+    return m;
+  }
+  function defaultTheta(range) {
+    if (range.type === 'full') {
+      // 避开变点：取 θF+75°（变点只可能在 θF 或 θF+180°）
+      return range.intervals[0].lo + 75 * DEG;
+    }
+    var iv = range.intervals[0], cs = iv.criticals || [];
+    function far(t) { return cs.every(function (c) { return Math.abs(c - t) > 5 * DEG; }); }
+    // 默认取区间中点；中点恰是变点时（如筝形 [70,40,40,70] 以 DA 为机架、AB 主动，中点处 B 与 D 重合）改取区间 30% / 70% 处
+    var cand = [0.5, 0.3, 0.7, 0.2, 0.8];
+    for (var i = 0; i < cand.length; i++) { var t = iv.lo + cand[i] * (iv.hi - iv.lo); if (far(t)) return t; }
+    return (iv.lo + iv.hi) / 2;
+  }
+  /** 把运动状态放到给定 θ（若不可行，移到最近的可行位置），返回 {moved:bool} */
+  function placeAt(m, theta) {
+    var r = m.range, best = null, bestD = Infinity, bi = 0;
+    if (r.type === 'full') { best = theta; bi = 0; }
+    else {
+      r.intervals.forEach(function (iv, i) {
+        var v = angleInInterval(theta, iv);
+        if (v !== null) { if (bestD > 0) { best = v; bestD = 0; bi = i; } return; }
+        // 不在区间内：找最近端点
+        [iv.lo, iv.hi].forEach(function (e) {
+          var d = Math.abs(wrapPi(theta - e));
+          if (d < bestD) { bestD = d; best = e; bi = i; }
+        });
+      });
+    }
+    var moved = r.type !== 'full' && bestD > 1e-9;
+    m.iv = bi; m.theta = best; m.prevY = null; m.prevTheta = null;
+    // 恰好落在“铰点重合”奇异位置（ρ=0，位置不唯一）时，向区间内侧越过 SING_EPS
+    var sing = coincidentNear(m, m.theta);
+    if (sing !== null) {
+      var iv0 = r.type === 'full' ? null : r.intervals[bi];
+      var up = sing + SING_EPS, dn = sing - SING_EPS;
+      m.theta = (!iv0 || up <= iv0.hi) ? up : dn;
+      m.nudged = true;
+    }
+    m.cfg = solve(m.g, m.theta, m.sigma);
+    m.ok = m.cfg.ok;
+    return { moved: moved };
+  }
+
+  /**
+   * 按当前方向推进主动件 amount（弧度，≥0）。内部按 ≤ maxSub 的子步推进，保证分支连续。
+   * o.onLimit: 'bounce'（默认，回程且保持支路）| 'pass'（越过：回程并切换支路，从动件继续同向）| 'stop'（停在端点）| 'clamp'（拖动用：停在端点不反向）
+   * 变点：默认按切线连续选择分支；若 m.switchNextCritical=true，则在下一个变点改走另一分支（演示运动不确定性）
+   * o.onSub(m) 每个子步回调（用于测量）
+   * 返回事件数组：{type:'limit'|'critical'|'cycle'|'stall', ...}；critical 事件带 kind：'collinear'（四杆共线）或 'coincident'（铰点重合）
+   */
+  function advance(m, amount, o) {
+    o = o || {};
+    var events = [];
+    if (!m.ok) return events;
+    var maxSub = o.maxSub || 0.5 * DEG, onLimit = o.onLimit || 'bounce', remaining = Math.max(0, amount);
+    var r = m.range;
+    var guard = 0;
+    while (remaining > 1e-12 && guard++ < 100000) {
+      var d = Math.min(maxSub, remaining);
+      remaining -= d;
+      var from = m.theta, next = from + m.dir * d;
+      if (r.type !== 'full') {
+        var iv = r.intervals[m.iv];
+        if (next > iv.hi || next < iv.lo) {
+          var bound = next > iv.hi ? iv.hi : iv.lo;
+          var used = Math.abs(bound - from);
+          remaining += d - used;
+          if (!moveTo(m, bound, o, events, used)) { events.push({ type: 'stall', theta: m.theta, target: bound, sigma: m.sigma }); m.stalled = true; break; }
+          events.push({ type: 'limit', which: bound === iv.hi ? 'hi' : 'lo', theta: bound, sigma: m.sigma, travel: m.travel });
+          if (onLimit === 'clamp') { remaining = 0; break; }
+          m.limitCount = (m.limitCount || 0) + 1;
+          if (m.limitCount % 2 === 0) events.push({ type: 'cycle', travel: m.travel });
+          m.dir = -m.dir;
+          if (onLimit === 'stop') { remaining = 0; m.stoppedAtLimit = true; break; }
+          if (onLimit === 'pass') { m.sigma = -m.sigma; m.prevY = null; m.prevTheta = null; m.cfg = solve(m.g, m.theta, m.sigma); }
+          continue;
+        }
+      }
+      // 子步终点恰好（或几乎）落在“铰点重合”奇异位置：越过 SING_EPS，不在该点求解（该点位置不唯一）
+      var sing = coincidentNear(m, next);
+      if (sing !== null) {
+        var next2 = sing + m.dir * SING_EPS;
+        if (r.type !== 'full') { var ivs = r.intervals[m.iv]; next2 = clamp(next2, ivs.lo, ivs.hi); }
+        remaining = Math.max(0, remaining - Math.abs(next2 - next));
+        d = Math.abs(next2 - from); next = next2;
+      }
+      if (!moveTo(m, next, o, events, d)) {
+        // 数值上仍无法求解（理论上不应出现）：不再静默停住，发出 stall 事件并结束本次推进，由页面提示并暂停
+        events.push({ type: 'stall', theta: m.theta, target: next, sigma: m.sigma });
+        m.stalled = true;
+        break;
+      }
+    }
+    return events;
+  }
+
+  /**
+   * 用于变点处选支的“预测位置”：线性外推 Y_pred = Y + (Y − Y_prev)·(本步/上步)（运动反向时取负）。
+   * 静止起步（没有上一位置）时，假定机构是沿当前支路、按当前运动方向来到这里的，在 θ − dir·VIRT_STEP 处构造“假定的上一位置”。
+   */
+  function predictY(m, from, next) {
+    var g = m.g, cur = m.cfg, prevY = m.prevY, prevT = m.prevTheta;
+    if (!(prevY && cur && cur.ok && prevT !== null && prevT !== undefined && Math.abs(from - prevT) > 1e-12)) {
+      var dirNow = next >= from ? 1 : -1, tb = from - dirNow * VIRT_STEP, back = solve(g, tb, m.sigma);
+      if (!(cur && cur.ok && back.ok)) return null;
+      prevY = back.Y; prevT = tb; m.virtualStart = true;
+    }
+    var ratio = Math.abs(next - from) / Math.abs(from - prevT), sgn = (from - prevT) * (next - from) >= 0 ? 1 : -1;
+    return { x: cur.Y.x + sgn * ratio * (cur.Y.x - prevY.x), y: cur.Y.y + sgn * ratio * (cur.Y.y - prevY.y) };
+  }
+
+  /** 推进到 next；成功返回 true。变点处按切线连续选支（或按演示要求换支）。 */
+  function moveTo(m, next, o, events, d) {
+    var from = m.theta, g = m.g, r = m.range;
+    var crit = criticalBetween(r, m, from, next);
+    var cfg;
+    if (crit !== null && Math.abs(next - crit.theta) > 1e-9) {
+      // 离开/越过变点：两分支在此汇合，按切线连续（线性预测）选择；或按演示需求改走另一分支
+      var a = solve(g, next, m.sigma), b = solve(g, next, -m.sigma), pick = a.ok ? a : b;
+      if (a.ok && b.ok) {
+        var P = predictY(m, from, next), smooth;
+        if (P) smooth = Math.hypot(a.Y.x - P.x, a.Y.y - P.y) <= Math.hypot(b.Y.x - P.x, b.Y.y - P.y) ? a : b;
+        else if (m.cfg && m.cfg.ok) smooth = Math.hypot(a.Y.x - m.cfg.Y.x, a.Y.y - m.cfg.Y.y) <= Math.hypot(b.Y.x - m.cfg.Y.x, b.Y.y - m.cfg.Y.y) ? a : b;
+        else smooth = a;
+        var other = smooth === a ? b : a;
+        if (m.switchNextCritical) { pick = other; m.switchNextCritical = false; } else pick = smooth;
+      }
+      m.sigma = pick.sigma;
+      cfg = pick;
+      var ev = { type: 'critical', theta: crit.theta, travel: m.travel + d, kind: crit.info ? crit.info.kind : 'collinear' };
+      if (ev.kind === 'coincident') { ev.moving = crit.info.moving; ev.fixed = crit.info.fixed; ev.movingName = JOINT_NAMES[crit.info.moving]; ev.fixedName = JOINT_NAMES[crit.info.fixed]; }
+      events.push(ev);
+    } else {
+      cfg = solve(g, next, m.sigma);
+    }
+    if (!cfg.ok) return false;
+    m.prevY = m.cfg && m.cfg.ok ? m.cfg.Y : null; m.prevTheta = from;
+    m.theta = next; m.cfg = cfg; m.travel += d; m.stalled = false;
+    if (r.type === 'full') {
+      m.cycleAcc = (m.cycleAcc || 0) + d;
+      if (m.cycleAcc >= TWO_PI - 1e-9) { m.cycleAcc -= TWO_PI; events.push({ type: 'cycle', travel: m.travel }); }
+    }
+    if (o.onSub) o.onSub(m);
+    return true;
+  }
+
+  /** 本子步 [from,next] 内的变点：返回 {theta, info} 或 null */
+  function criticalBetween(r, m, from, next) {
+    var list, info;
+    if (r.type === 'full') { list = r.criticals; info = r.criticalInfo; }
+    else if (r.intervals[m.iv]) { list = r.intervals[m.iv].criticals; info = r.intervals[m.iv].criticalInfo; }
+    if (!list || !list.length) return null;
+    var lo = Math.min(from, next), hi = Math.max(from, next);
+    for (var i = 0; i < list.length; i++) {
+      var v = angleInInterval(list[i], { lo: lo, hi: hi }, 1e-9);
+      if (v !== null) return { theta: v, info: info ? info[i] : null };
+    }
+    return null;
+  }
+
+  /** 拖动：让主动件尽量转到 target（世界角），途中遇端点则停在端点 */
+  function dragTo(m, target, o) {
+    if (!m.ok) return [];
+    var r = m.range, cur = m.theta, goal, outside = false, iv = null;
+    if (r.type === 'full') goal = cur + wrapPi(target - cur);
+    else {
+      iv = r.intervals[m.iv];
+      var v = angleInInterval(target, iv);
+      if (v === null) {
+        // 目标在可达范围之外：停在更近的端点（按角距离）
+        goal = Math.abs(wrapPi(target - iv.lo)) < Math.abs(wrapPi(target - iv.hi)) ? iv.lo : iv.hi;
+        outside = true;
+      } else goal = v;
+    }
+    var keepDir = m.dir;
+    m.dir = goal >= cur ? 1 : -1;
+    var ev = advance(m, Math.abs(goal - cur), Object.assign({}, o || {}, { onLimit: 'clamp' }));
+    m.dir = keepDir;
+    if (outside && Math.abs(m.theta - goal) < 1e-6) {
+      var c = solve(m.g, goal, m.sigma);
+      if (c.ok) { m.theta = goal; m.cfg = c; }
+      if (!ev.some(function (e) { return e.type === 'limit'; })) ev.push({ type: 'limit', which: goal === iv.hi ? 'hi' : 'lo', theta: goal, sigma: m.sigma, travel: m.travel });
+    }
+    return ev;
+  }
+
+  /* ---------------- 本专题新增：更换机架时保持同一姿态 ---------------- */
+  /**
+   * 已知四个铰点在某一坐标系中的位置 J[0..3]（A,B,C,D），改以杆 newFrame 为机架：
+   * 新坐标系原点 = 新左固定铰 (newFrame+1)%4，x 轴指向新右固定铰 newFrame。只做刚体变换（转动+平移，不镜像），
+   * 因而机构的形状（相对姿态）不变，变的只是“哪根杆固定不动”。
+   * 返回 {joints, angle, origin}：angle 为旧坐标系中新机架方向的方位角，origin 为新左固定铰在旧坐标系中的位置，
+   * 满足 J_old = R(angle)·J_new + origin（页面据此做换机架的过渡动画）。
+   */
+  function reframeJoints(J, newFrame) {
+    var t = topology(newFrame), O = J[t.leftPivot], Rp = J[t.rightPivot];
+    var a = Math.atan2(Rp.y - O.y, Rp.x - O.x), c = Math.cos(a), s = Math.sin(a), out = [];
+    for (var i = 0; i < 4; i++) {
+      var dx = J[i].x - O.x, dy = J[i].y - O.y;
+      out[i] = { x: c * dx + s * dy, y: -s * dx + c * dy };
+    }
+    return { joints: out, angle: a, origin: { x: O.x, y: O.y } };
+  }
+
+  return {
+    VERSION: VERSION, TOL: TOL, DEG: DEG, LINK_NAMES: LINK_NAMES, JOINT_NAMES: JOINT_NAMES, TYPE_NAMES: TYPE_NAMES,
+    normAngle: normAngle, wrapPi: wrapPi, topology: topology, makeGeom: makeGeom, lengthStats: lengthStats,
+    inputRange: inputRange, angleInInterval: angleInInterval, solve: solve, closureError: closureError,
+    stateFromJoints: stateFromJoints, classify: classify, createMotion: createMotion, placeAt: placeAt,
+    advance: advance, dragTo: dragTo, reframeJoints: reframeJoints,
+    criticalKind: criticalKind, singularities: singularities, SING_EPS: SING_EPS
+  };
+});
+
+</script>
+<script>
+/* 本地详细事件记录 + 一次性导出压缩编码 JSON；不向第三方服务发送数据。 */
+(function () {
+  'use strict';
+  // 教师将 WPS 表单建好后，可只修改这个地址；没有地址时由老师另发二维码。
+  var WPS_FORM_URL = '';
+  var KEY = 'fourbar_wps_detailed_events_v2';
+  var RODS = ['AB','BC','CD','DA'];
+  var TYPES = ['rod_length_changed','frame_changed','reachability_toggled',
+    'parameters_reset','preset_applied','driver_changed','branch_changed',
+    'play_toggled','manual_angle_changed','speed_changed'];
+  var QUIZ = ['A','B','C','D'];
+  var A = window.OpRecorder = {ready:false,log:function(){},status:function(){}};
+  var storage = null, stateGetter = null, latestJson = '';
+  try { storage=window.localStorage; var key='__fb_storage_test'; storage.setItem(key,'1'); storage.removeItem(key); }
+  catch(e) {storage=null;}
+  function uid() {var a=''; for(var i=0;i<24;i++) a += '0123456789abcdef'.charAt(Math.floor(Math.random()*16)); return a;}
+  function makeData() {
+    var c={}; TYPES.forEach(function(t){c[t]=0;});
+    return {v:2,session_id:'S-'+uid(),started_at:new Date().toISOString(),
+      initial_state:null,student_name:'',quiz_answers:{},
+      counts:c,events:[],storage_warning:false};
+  }
+  var data=null;
+  try {data=storage && JSON.parse(storage.getItem(KEY));} catch(e){}
+  if (!data || data.v!==2 || !Array.isArray(data.events) || !data.counts || !data.session_id) data=makeData();
+  function elem(id){return document.getElementById(id);}
+  function warn(text) {
+    var e=elem('assignmentStatus');if(e){e.textContent=text;e.className='submit-status error';}
+  }
+  function save() {
+    if (!storage) {data.storage_warning=true;return;}
+    try {storage.setItem(KEY,JSON.stringify(data));}
+    catch(e) {data.storage_warning=true;warn('记录已保留在当前页面内，但手机存储空间不足；请尽快导出作业，避免刷新丢失。');}
+  }
+  function text(v){return String(v===undefined?'':v).trim();}
+  function copy(obj){return JSON.parse(JSON.stringify(obj));}
+  function state(){
+    var x=null;try{x=stateGetter?stateGetter():null;}catch(e){}
+    if(!x || !x.lengths)return null;
+    return {frame:x.frame,lengths_mm:{
+      AB:+x.lengths.AB,BC:+x.lengths.BC,CD:+x.lengths.CD,DA:+x.lengths.DA}};
+  }
+  function setStateProvider(fn){
+    stateGetter=fn; var x=state();
+    if(x && !data.initial_state){data.initial_state=copy(x);save();}
+    updateState();
+  }
+  function beforeState(event, d, after) {
+    var b=copy(after);
+    if(event==='rod_length_changed' && RODS.indexOf(d.rod)!==-1) b.lengths_mm[d.rod]=+d.before;
+    if(event==='frame_changed' && d.from) b.frame=d.from;
+    if(event==='preset_applied' && d.before_lengths) {
+      RODS.forEach(function(k){if(d.before_lengths[k]!==undefined)b.lengths_mm[k]=+d.before_lengths[k];});
+    }
+    if(event==='parameters_reset' && d.before_lengths) {
+      RODS.forEach(function(k){if(d.before_lengths[k]!==undefined)b.lengths_mm[k]=+d.before_lengths[k];});
+      if(d.before_frame) b.frame=d.before_frame;
+    }
+    return b;
+  }
+  function log(event, details) {
+    if(TYPES.indexOf(event)<0)return;
+    var after=state();if(!after)return;
+    var d=copy(details||{});
+    var now=Date.now(), started=Date.parse(data.started_at);
+    data.counts[event]=(data.counts[event]||0)+1;
+    var ev={sequence:data.events.length+1,at:new Date(now).toISOString(),
+      elapsed_ms:Math.max(0,now-started),type:event,
+      before:beforeState(event,d,after),after:after,details:d};
+    data.events.push(ev); // 逐次保留所有有效事件，不丢弃中间事件
+    save();updateState();
+  }
+  function updateState(){
+    var x=state(), el=elem('assignmentState');
+    if(el && x){var l=x.lengths_mm;el.textContent=
+      '自由探索当前值：AB '+l.AB+'、BC '+l.BC+'、CD '+l.CD+'、DA '+l.DA+
+      ' mm；固定机架：'+x.frame+'。判断题参数与此无关。';}
+  }
+  function answers(){
+    var a={};QUIZ.forEach(function(id){
+      var selected=document.querySelector('input[name="quiz_'+id+'"]:checked');
+      a[id]=selected?selected.value:'';
+    });return a;
+  }
+  function countStates(events) {
+    var seen=Object.create(null),n=0;
+    function add(s){
+      if(!s)return;var l=s.lengths_mm;
+      if(!l)return;var k=s.frame+':'+RODS.map(function(r){return l[r];}).join(',');
+      if(!seen[k]){seen[k]=1;n++;}
+    }
+    add(data.initial_state);events.forEach(function(e){add(e.after);});
+    return n;
+  }
+  function payload(){
+    var n=elem('studentName'),name=n?text(n.value):'';
+    if(!name){warn('请先填写姓名。');return null;}
+    if(name.length>24){warn('姓名不能超过 24 个字。');return null;}
+    var qa=answers(), missing=QUIZ.filter(function(i){return !qa[i];});
+    if(missing.length){warn('请完成四组机构判断：'+missing.join('、')+' 组尚未作答。');return null;}
+    var x=state();if(!x){warn('机构还未初始化，请稍后重试。');return null;}
+    data.student_name=name;data.quiz_answers=qa;save();
+    var now=new Date();
+    return {schema_version:'2.0',topic:'曲柄存在条件',session_id:data.session_id,
+      student_name:name,started_at:data.started_at,exported_at:now.toISOString(),
+      duration_seconds:Math.max(0,Math.round((now-Date.parse(data.started_at))/1000)),
+      free_exploration_final_state:x,
+      quiz:[
+        {group:'A',lengths_mm:{AB:42,BC:73,CD:89,DA:112},frame:'AB',answer:qa.A},
+        {group:'B',lengths_mm:{AB:48,BC:76,CD:93,DA:115},frame:'BC',answer:qa.B},
+        {group:'C',lengths_mm:{AB:51,BC:78,CD:94,DA:123},frame:'CD',answer:qa.C},
+        {group:'D',lengths_mm:{AB:55,BC:85,CD:105,DA:135},frame:'DA',answer:qa.D}
+      ],
+      exploration:{
+        initial_state:data.initial_state,
+        effective_operation_counts:copy(data.counts),
+        total_effective_events:data.events.length,
+        distinct_parameter_states:countStates(data.events),
+        all_effective_events:copy(data.events),
+        event_data_complete:true,
+        browser_persistence_warning:!!data.storage_warning,
+        note:'有效事件一事一记，连续拖动只在放手或提交时形成一次记录；无逐帧鼠标轨迹。'
+      },
+      source:'GitHub Pages 本地导出；由学生自行上传 WPS 表单'};
+  }
+  /* 浏览器兼容的 UTF-8 LZW16 编码：不使用外部库和联网接口；仅编码，不是加密。 */
+  function lzwBase64(s){
+    var input=unescape(encodeURIComponent(s)),dict=Object.create(null),next=256,cur=input.charAt(0),codes=[];
+    if(!cur)return '';
+    for(var i=1;i<input.length;i++){
+      var c=input.charAt(i),cc=cur+c;
+      if(dict[cc]!==undefined)cur=cc;
+      else {
+        codes.push(cur.length===1?cur.charCodeAt(0):dict[cur]);
+        if(next<65535)dict[cc]=next++;
+        cur=c;
+      }
+    }
+    codes.push(cur.length===1?cur.charCodeAt(0):dict[cur]);
+    var bin='';
+    for(var j=0;j<codes.length;j++)bin+=String.fromCharCode(codes[j]&255,codes[j]>>>8);
+    return btoa(bin);
+  }
+  function outerJSON(inner){
+    var raw=JSON.stringify(inner);
+    return JSON.stringify({
+      format:'fourbar-assignment-v2',
+      codec:'lzw16-utf8-base64', // 教师解码工具见附件
+      data:lzwBase64(raw)
+    },null,2)+'\n';
+  }
+  function cleanName(name){
+    return name.replace(/[\\/:*?"<>|\x00-\x1f]/g,'_').replace(/\s+/g,'').slice(0,22)||'student';
+  }
+  function filename(name){
+    return '四杆探索_'+cleanName(name)+'_'+data.session_id.slice(-6)+'.json';
+  }
+  function backup(t){
+    latestJson=t;var p=elem('jsonBackupPanel'),ta=elem('jsonPreview');
+    if(p)p.hidden=false;if(ta)ta.value=t;
+  }
+  function buildJSON(){
+    var obj=payload();if(!obj)return null;
+    var v=outerJSON(obj);backup(v);return {text:v,obj:obj};
+  }
+  function download(){
+    var o=buildJSON();if(!o)return;
+    if(typeof Blob==='undefined'||!window.URL||!URL.createObjectURL){
+      warn('此浏览器不能下载文件，请使用“复制编码后的 JSON”。');return;
+    }
+    try {
+      var b=new Blob([o.text],{type:'application/json;charset=utf-8'});
+      var url=URL.createObjectURL(b),a=document.createElement('a');
+      a.href=url;a.download=filename(o.obj.student_name);a.style.display='none';
+      document.body.appendChild(a);a.click();
+      setTimeout(function(){URL.revokeObjectURL(url);if(a.parentNode)a.parentNode.removeChild(a);},3500);
+      var msg=elem('assignmentStatus');if(msg){msg.className='submit-status';msg.textContent=
+        '已发起 JSON 下载，请检查手机“下载/文件”。如微信无法保存，请使用备用复制方式。';}
+    }catch(e){warn('文件下载未能发起，请改用“复制编码后的 JSON”。');}
+  }
+  function copyJSON(){
+    var o=buildJSON();if(!o)return;
+    var t=elem('jsonPreview');if(t){t.focus();t.select();}
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(o.text).then(function(){
+        var p=elem('assignmentStatus');if(p){p.className='submit-status';p.textContent='已复制编码后的 JSON。';}
+      },function(){legacyCopy();});
+    }else legacyCopy();
+  }
+  function legacyCopy(){
+    try{if(document.execCommand('copy')){var p=elem('assignmentStatus');if(p){p.className='submit-status';p.textContent='已复制编码后的 JSON。';}return;}}
+    catch(e){}
+    warn('无法自动复制，请长按下方 JSON 文字后手动复制。');
+  }
+  function init(){
+    var name=elem('studentName');
+    if(name){name.value=data.student_name||'';name.addEventListener('input',function(){data.student_name=text(this.value);save();});}
+    QUIZ.forEach(function(id){
+      var nodes=document.querySelectorAll('input[name="quiz_'+id+'"]');
+      Array.prototype.forEach.call(nodes,function(x){
+        if(data.quiz_answers[id]===x.value)x.checked=true;
+        x.addEventListener('change',function(){data.quiz_answers[id]=x.value;save();});
+      });
+    });
+    var b=elem('exportJsonBtn');if(b)b.addEventListener('click',download);
+    b=elem('copyJsonBtn');if(b)b.addEventListener('click',copyJSON);
+    var link=elem('wpsFormLink');if(link && /^https:\/\//i.test(WPS_FORM_URL)){link.href=WPS_FORM_URL;link.hidden=false;}
+    updateState();
+  }
+  A.log=log;A.setStateProvider=setStateProvider;
+  A.flush=function(){};
+  A.status=function(){return {mode:'local-detailed-export',session_id:data.session_id,
+      total_events:data.events.length,stored:data.storage_warning?'memory-only':'localStorage',network_upload:false};};
+  A.preview=payload;A.encode=outerJSON;A.ready=true;
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+})();
+</script>
+<script>
+/*!
+ * app.js — 曲柄存在条件探索页（学生端）
+ * 依赖 js/fourbar-core.js（全局 FourBar）。杆长顺序 [AB, BC, CD, DA]，机架编号 0:AB 1:BC 2:CD 3:DA。
+ * 页面只做：杆长 / 机架 / 主动件 / 播放 / 手动调角 / 装配方式 / 四组判断与作业导出。
+ * 操作记录：调用上方 OpRecorder，所有有效事件完整保存在本地并在导出时压缩编码；不使用服务端。
+ */
+(function () {
+  'use strict';
+  var F = window.FourBar;
+  var DEG = Math.PI / 180, TWO_PI = 2 * Math.PI;
+  var LN = F.LINK_NAMES, JN = F.JOINT_NAMES;
+  var COLORS = ['#d64541', '#d9930d', '#2e9461', '#3a6fd0'];
+  var LMIN = 10, LMAX = 100;
+  var PRESETS = { A: [25, 40, 45, 50], B: [30, 40, 50, 70], C: [30, 40, 50, 60], D: [45, 25, 50, 40] };
+  var DEFAULTS = { L: [25, 40, 45, 50], frame: 3, driver: 'left', speed: 45 };
+  var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---------- 页面事件钩子（供自动测试读取；不做评分） ---------- */
+  var CrankLab = window.CrankLab = { version: '4.0.0-wps-quiz', onEvent: null, core: F };
+  function emit(type, detail) {
+    if (typeof CrankLab.onEvent === 'function') { try { CrankLab.onEvent({ type: type, detail: detail || {}, time: Date.now() }); } catch (e) {} }
+  }
+
+  /* ---------- 状态 ---------- */
+  var st = {
+    L: DEFAULTS.L.slice(), frame: DEFAULTS.frame, driver: DEFAULTS.driver, speed: DEFAULTS.speed,
+    playing: !reduceMotion, m: null, g: null, cls: null, stats: null,
+    lastTheta: null, lastSigma: 1, dir: 1,
+    holdUntil: 0, flash: null, tween: null, dragging: false, lengthDragging: null, angleBusy: false,
+    reveal: false, showRule: false, notice: null,
+    view: { cx: 0, cy: 0, s: 3 }, target: { cx: 0, cy: 0, s: 3 }, W: 800, H: 520
+  };
+  CrankLab.state = st; // 供自动测试读取（只读使用）
+
+  /* ---------- 操作记录：只在“有效操作完成”时写一条（记录模块见上一段脚本，出错不影响本页） ---------- */
+  var committedL = st.L.slice();   // 上一次已记录的杆长，用于判断“改前/改后”和“数值是否真的变了”
+  var rodTimers = {}, sliderActive = {};
+  function stateForRecord() {
+    return { frame: LN[st.frame], lengths: { AB: st.L[0], BC: st.L[1], CD: st.L[2], DA: st.L[3] } };
+  }
+  function rec(type, details) {
+    if (type !== 'rod_length_changed') flushPendingRods(); // 保证事件顺序与操作顺序一致
+    try { if (window.OpRecorder && OpRecorder.ready) OpRecorder.log(type, details || {}); } catch (e) { /* 记录失败不影响机构 */ }
+  }
+  function commitRod(i, input) {
+    if (rodTimers[i]) { clearTimeout(rodTimers[i].t); delete rodTimers[i]; }
+    var before = committedL[i], after = st.L[i];
+    if (before === after) return;            // 拖了又放回原值：不算有效修改
+    committedL[i] = after;
+    rec('rod_length_changed', { rod: LN[i], before: before, after: after, input: input });
+  }
+  function scheduleRodCommit(i, input, ms) {
+    if (rodTimers[i]) clearTimeout(rodTimers[i].t);
+    rodTimers[i] = { input: input, t: setTimeout(function () { delete rodTimers[i]; commitRod(i, input); }, ms) };
+  }
+  function flushPendingRods() { for (var k in rodTimers) if (rodTimers.hasOwnProperty(k)) commitRod(+k, rodTimers[k].input); }
+  function resyncCommitted() { for (var k in rodTimers) if (rodTimers.hasOwnProperty(k)) clearTimeout(rodTimers[k].t); rodTimers = {}; committedL = st.L.slice(); }
+  try { if (window.OpRecorder && OpRecorder.setStateProvider) OpRecorder.setStateProvider(stateForRecord); } catch (e) {}
+
+  var $ = function (id) { return document.getElementById(id); };
+  var svg = $('view');
+  var SVGNS = 'http://www.w3.org/2000/svg';
+  function el(tag, attrs, parent) {
+    var e = document.createElementNS(SVGNS, tag);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(e);
+    return e;
+  }
+  function fmt(x) { return (Math.round(x * 10) / 10).toString(); }
+  function normA(a) { a = a % TWO_PI; return a < 0 ? a + TWO_PI : a; }
+
+  /* ================= 计算与状态重建 ================= */
+  function rebuild(o) {
+    o = o || {};
+    st.stats = F.lengthStats(st.L);
+    st.cls = F.classify(st.L, st.frame);
+    st.g = F.makeGeom(st.L, st.frame, st.driver);
+    st.flash = null; st.notice = null; // 机构变了，旧的变点提示不再适用
+    if (st.cls.type === 'none' || st.cls.type === 'rigid') {
+      st.m = null;
+    } else {
+      var opts = { dir: st.dir };
+      if (o.joints) {
+        var s2 = F.stateFromJoints(st.g, o.joints);
+        opts.theta = s2.theta; opts.sigma = s2.sigma;
+      } else if (o.keepPose !== false && st.lastTheta !== null) {
+        opts.theta = st.lastTheta; opts.sigma = st.lastSigma;
+      }
+      st.m = F.createMotion(st.g, opts);
+      if (!st.m.ok) st.m = null; // 理论上可装配时不会发生；保险起见不画虚假闭合
+      else remember();
+    }
+    refit(o.snapView);
+    renderControls();
+    renderReadouts();
+    renderNotice();
+    renderRelation();
+  }
+  function remember() { if (st.m && st.m.ok) { st.lastTheta = st.m.theta; st.lastSigma = st.m.sigma; st.dir = st.m.dir; } }
+
+  /** 两根连架杆各自“作主动件时”的可达范围（= 该杆相对机架能转到哪些角度） */
+  function sideRanges() {
+    var c = st.cls;
+    return { left: c.leftRange || null, right: c.rightRange || null };
+  }
+
+  /* ================= 视图（自动取景，带滞回，避免改杆长时画面频繁缩放） ================= */
+  function modelBox() {
+    var t = F.topology(st.frame), r0 = st.L[st.frame], rl = st.L[t.leftLink], rr = st.L[t.rightLink];
+    var R = Math.max(rl, rr);
+    return { x0: Math.min(-rl, r0 - rr), x1: Math.max(rl, r0 + rr, r0), y0: -R, y1: R };
+  }
+  function refit(snap) {
+    if(st.lengthDragging)return;
+    var b = modelBox(), pad = Math.max(26, Math.min(46, 0.08 * Math.min(st.W, st.H)));
+    var sFit = Math.min((st.W - 2 * pad) / (b.x1 - b.x0), (st.H - 2 * pad) / (b.y1 - b.y0));
+    st.target.cx = (b.x0 + b.x1) / 2; st.target.cy = (b.y0 + b.y1) / 2;
+    if (snap || st.view.s > sFit * 1.001 || st.view.s < sFit * 0.72) st.target.s = sFit;
+    if (snap === 'jump') { st.view.cx = st.target.cx; st.view.cy = st.target.cy; st.view.s = st.target.s; }
+  }
+  function stepView(dt) {
+    var k = Math.min(1, dt * 7), v = st.view, t = st.target;
+    v.cx += (t.cx - v.cx) * k; v.cy += (t.cy - v.cy) * k; v.s += (t.s - v.s) * k;
+  }
+  function toScreen(p) { return { x: st.W / 2 + (p.x - st.view.cx) * st.view.s, y: st.H / 2 - (p.y - st.view.cy) * st.view.s }; }
+  function toModel(px, py) { return { x: (px - st.W / 2) / st.view.s + st.view.cx, y: -(py - st.H / 2) / st.view.s + st.view.cy }; }
+
+  /* ================= SVG 场景 ================= */
+  var S = {};
+  function buildScene() {
+    var defs = el('defs', {}, svg);
+    var pat = el('pattern', { id: 'hatch', width: 8, height: 8, patternUnits: 'userSpaceOnUse', patternTransform: 'rotate(45)' }, defs);
+    el('line', { x1: 0, y1: 0, x2: 0, y2: 8, stroke: '#8a949e', 'stroke-width': 2 }, pat);
+    var mk = el('marker', { id: 'arrow', viewBox: '0 0 10 10', refX: 6, refY: 5, markerWidth: 7, markerHeight: 7, orient: 'auto' }, defs);
+    el('path', { d: 'M0,0 L10,5 L0,10 z', fill: '#1e2933' }, mk);
+    S.grid = el('path', { fill: 'none', stroke: '#eef1f4', 'stroke-width': 1 }, svg);
+    S.reach = el('g', { 'fill': 'none' }, svg);
+    S.reachPaths = [el('path', { 'stroke-width': 2, 'stroke-dasharray': '2 6', 'stroke-linecap': 'round' }, S.reach),
+                    el('path', { 'stroke-width': 2, 'stroke-dasharray': '2 6', 'stroke-linecap': 'round' }, S.reach)];
+    S.ground = el('g', {}, svg);
+    S.groundBand = el('rect', { fill: 'url(#hatch)', height: 12 }, S.ground);
+    S.groundTri = [el('path', { fill: '#fff', stroke: '#1e2933', 'stroke-width': 1.5 }, S.ground), el('path', { fill: '#fff', stroke: '#1e2933', 'stroke-width': 1.5 }, S.ground)];
+    S.collinear = el('line', { stroke: '#9a3b12', 'stroke-width': 2, 'stroke-dasharray': '6 5', opacity: 0 }, svg);
+    S.links = [];
+    for (var i = 0; i < 4; i++) S.links.push(el('line', { stroke: COLORS[i], 'stroke-width': 10, 'stroke-linecap': 'round' }, svg));
+    S.driverArc = el('path', { fill: 'none', stroke: '#1e2933', 'stroke-width': 2, 'marker-end': 'url(#arrow)' }, svg);
+    S.halo = [el('circle', { r: 16, fill: 'none', stroke: '#9a3b12', 'stroke-width': 3, opacity: 0 }, svg), el('circle', { r: 16, fill: 'none', stroke: '#9a3b12', 'stroke-width': 3, opacity: 0 }, svg)];
+    S.joints = []; S.jlabels = []; S.llabels = [];
+    for (i = 0; i < 4; i++) {
+      S.joints.push(el('circle', { r: 7, fill: '#fff', stroke: '#1e2933', 'stroke-width': 2.5 }, svg));
+      var t = el('text', { 'font-size': 17, 'font-weight': 700, fill: '#1e2933', 'text-anchor': 'middle', 'dominant-baseline': 'central' }, svg);
+      t.textContent = JN[i]; S.jlabels.push(t);
+      var lt = el('text', { 'font-size': 14, fill: COLORS[i], 'font-weight': 600, 'text-anchor': 'middle', 'dominant-baseline': 'central', 'paint-order': 'stroke', stroke: '#fff', 'stroke-width': 4 }, svg);
+      S.llabels.push(lt);
+    }
+    S.handles = [el('circle', { r: 20, fill: 'transparent', stroke: 'none', style: 'cursor:grab' }, svg), el('circle', { r: 20, fill: 'transparent', stroke: 'none', style: 'cursor:grab' }, svg)];
+    S.lengthGrips = []; S.lengthHitZones = [];
+    for (var gi=0;gi<4;gi++) {
+      // 小圆点是设计杆长的拖动手柄，透明的大点击区便于触屏操作。
+      S.lengthGrips.push(el('circle', {r:8,fill:COLORS[gi],stroke:'#fff','stroke-width':2,
+        class:'length-grip',style:'pointer-events:none'},svg));
+      S.lengthHitZones.push(el('circle',{r:20,fill:'transparent',stroke:'none',
+        'data-length-grip':gi,class:'length-grip',style:'cursor:ew-resize;touch-action:none'},svg));
+    }
+
+    S.msg = el('text', { 'font-size': 18, fill: '#9a3b12', 'text-anchor': 'middle', 'font-weight': 600 }, svg);
+    S.msg2 = el('text', { 'font-size': 14, fill: '#5b6875', 'text-anchor': 'middle' }, svg);
+  }
+
+  function arcPoints(c, r, lo, hi) {
+    var pts = [], n = Math.max(2, Math.ceil(Math.abs(hi - lo) / (3 * DEG)));
+    for (var i = 0; i <= n; i++) { var a = lo + (hi - lo) * i / n; pts.push(toScreen({ x: c.x + r * Math.cos(a), y: c.y + r * Math.sin(a) })); }
+    return pts;
+  }
+  function pathFrom(pts, close) { return pts.map(function (p, i) { return (i ? 'L' : 'M') + p.x.toFixed(1) + ',' + p.y.toFixed(1); }).join('') + (close ? 'Z' : ''); }
+
+  /** 当前要画的四个铰点（模型坐标）；换机架过渡期间叠加刚体变换 */
+  function displayJoints(now) {
+    var J;
+    if (st.m && st.m.ok) J = st.m.cfg.joints;
+    else return null;
+    var tw = st.tween;
+    if (!tw) return J;
+    var u = Math.min(1, (now - tw.start) / tw.dur);
+    if (u >= 1) { st.tween = null; return J; }
+    u = u < .5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2;
+    var a = tw.angle * (1 - u), c = Math.cos(a), s = Math.sin(a), ox = tw.origin.x * (1 - u), oy = tw.origin.y * (1 - u);
+    return J.map(function (p) { return { x: c * p.x - s * p.y + ox, y: s * p.x + c * p.y + oy }; });
+  }
+
+  function draw(now) {
+    var W = st.W, H = st.H, t = F.topology(st.frame);
+    // 网格：10 mm 一格，原点在左固定铰
+    var g10 = 10 * st.view.s, d = '';
+    if (g10 > 6) {
+      var o = toScreen({ x: 0, y: 0 });
+      for (var x = o.x % g10; x < W; x += g10) d += 'M' + x.toFixed(1) + ',0V' + H;
+      for (var y = o.y % g10; y < H; y += g10) d += 'M0,' + y.toFixed(1) + 'H' + W;
+    }
+    S.grid.setAttribute('d', d);
+
+    var J = displayJoints(now);
+    var r0 = st.L[st.frame];
+    var PL = J ? J[t.leftPivot] : { x: 0, y: 0 }, PR = J ? J[t.rightPivot] : { x: r0, y: 0 };
+    var sPL = toScreen(PL), sPR = toScreen(PR);
+
+    // 机架：底部剖面线 + 两个固定铰支座（随机架方向转动）
+    var fa = Math.atan2(sPR.y - sPL.y, sPR.x - sPL.x), flen = Math.hypot(sPR.x - sPL.x, sPR.y - sPL.y);
+    S.ground.setAttribute('transform', 'translate(' + sPL.x.toFixed(1) + ',' + sPL.y.toFixed(1) + ') rotate(' + (fa / DEG).toFixed(2) + ')');
+    S.groundBand.setAttribute('x', -26); S.groundBand.setAttribute('y', 16); S.groundBand.setAttribute('width', flen + 52);
+    S.groundTri[0].setAttribute('d', 'M0,0 L-12,16 L12,16 Z');
+    S.groundTri[1].setAttribute('d', 'M' + flen.toFixed(1) + ',0 l-12,16 l24,0 Z');
+
+    // 可达范围（虚线）：两根连架杆的活动铰各自能到达的位置
+    var showReach = $('showReach').checked && !st.tween;
+    var rg = sideRanges();
+    [['left', t.leftLink, PL], ['right', t.rightLink, PR]].forEach(function (it, i) {
+      var p = S.reachPaths[i], r = it[0] === 'left' ? rg.left : rg.right, len = st.L[it[1]];
+      p.setAttribute('stroke', COLORS[it[1]]);
+      if (!showReach) { p.setAttribute('d', ''); return; }
+      if (!r || r.type === 'none' || r.type === 'rigid') {
+        // 不能装配时，仍画出两根连架杆活动铰的可达圆，帮助看出“为什么连不上”
+        p.setAttribute('d', st.m ? '' : pathFrom(arcPoints(it[2], len, 0, TWO_PI), true));
+        return;
+      }
+      var dd = '';
+      r.intervals.forEach(function (iv) { dd += pathFrom(arcPoints(it[2], len, iv.lo, iv.hi), r.type === 'full'); });
+      p.setAttribute('d', dd);
+    });
+
+    // 杆件
+    var vis = !!J;
+    for (var i = 0; i < 4; i++) {
+      var ln = S.links[i];
+      if (!vis && i !== st.frame) { ln.setAttribute('visibility', 'hidden'); S.llabels[i].setAttribute('visibility', 'hidden'); continue; }
+      ln.setAttribute('visibility', 'visible'); S.llabels[i].setAttribute('visibility', 'visible');
+      var P = vis ? toScreen(J[i]) : (i === st.frame ? sPR : null), Q = vis ? toScreen(J[(i + 1) % 4]) : sPL;
+      ln.setAttribute('x1', P.x); ln.setAttribute('y1', P.y); ln.setAttribute('x2', Q.x); ln.setAttribute('y2', Q.y);
+      ln.setAttribute('stroke-width', i === st.frame ? 12 : 10);
+    }
+    // 铰点与标注
+    var cen = { x: 0, y: 0 };
+    if (vis) { J.forEach(function (p) { var s = toScreen(p); cen.x += s.x / 4; cen.y += s.y / 4; }); }
+    for (i = 0; i < 4; i++) {
+      var jp = vis ? toScreen(J[i]) : (i === t.leftPivot ? sPL : (i === t.rightPivot ? sPR : null));
+      var jc = S.joints[i], jl = S.jlabels[i];
+      if (!jp) { jc.setAttribute('visibility', 'hidden'); jl.setAttribute('visibility', 'hidden'); continue; }
+      jc.setAttribute('visibility', 'visible'); jl.setAttribute('visibility', 'visible');
+      jc.setAttribute('cx', jp.x); jc.setAttribute('cy', jp.y);
+      var fixed = i === t.leftPivot || i === t.rightPivot;
+      jc.setAttribute('fill', fixed ? '#1e2933' : '#fff');
+      var dx = jp.x - cen.x, dy = jp.y - cen.y, dl = Math.hypot(dx, dy);
+      if (!vis || dl < 1) { dx = 0; dy = -1; dl = 1; }
+      if (fixed) { var ux = (sPR.x - sPL.x) / (flen || 1), uy = (sPR.y - sPL.y) / (flen || 1), sg0 = i === t.leftPivot ? -1 : 1; dx = sg0 * ux - 0.35 * uy; dy = sg0 * uy + 0.35 * ux; dl = Math.hypot(dx, dy); }
+      jl.setAttribute('x', jp.x + 22 * dx / dl); jl.setAttribute('y', jp.y + 22 * dy / dl);
+    }
+    for (i = 0; i < 4; i++) {
+      if (!vis && i !== st.frame) continue;
+      var A = vis ? toScreen(J[i]) : sPR, B = vis ? toScreen(J[(i + 1) % 4]) : sPL;
+      var mx = (A.x + B.x) / 2, my = (A.y + B.y) / 2, nx = -(B.y - A.y), ny = B.x - A.x, nl = Math.hypot(nx, ny) || 1;
+      nx /= nl; ny /= nl;
+      if (i === st.frame) { // 机架标注放在剖面线一侧：剖面线在机架局部坐标 +y 方向
+        nx = -Math.sin(fa); ny = Math.cos(fa);
+        S.llabels[i].setAttribute('x', mx + 44 * nx); S.llabels[i].setAttribute('y', my + 44 * ny);
+        S.llabels[i].textContent = LN[i] + ' ' + fmt(st.L[i]) + '（机架）';
+      } else {
+        if ((mx + nx - cen.x) * nx + (my + ny - cen.y) * ny < 0) { nx = -nx; ny = -ny; }
+        S.llabels[i].setAttribute('x', mx + 18 * nx); S.llabels[i].setAttribute('y', my + 18 * ny);
+        S.llabels[i].textContent = LN[i] + ' ' + fmt(st.L[i]);
+      }
+    }
+
+    // 主动件转向箭头
+    if (vis && st.m) {
+      var pin = toScreen(J[st.g.inPivot]), mov = toScreen(J[st.g.inMoving]);
+      var a0 = Math.atan2(mov.y - pin.y, mov.x - pin.x), sgn = -st.m.dir; // 屏幕 y 向下，逆时针为负
+      var R = 30, pts = [];
+      for (var k = 0; k <= 12; k++) { var aa = a0 + sgn * (15 + 45 * k / 12) * DEG; pts.push({ x: pin.x + R * Math.cos(aa), y: pin.y + R * Math.sin(aa) }); }
+      S.driverArc.setAttribute('d', pathFrom(pts));
+      S.driverArc.setAttribute('visibility', st.playing ? 'visible' : 'hidden');
+      // 拖动手柄放在两个连架杆活动铰上
+      [t.leftMoving, t.rightMoving].forEach(function (ji, n) { var p = toScreen(J[ji]); S.handles[n].setAttribute('cx', p.x); S.handles[n].setAttribute('cy', p.y); S.handles[n].setAttribute('visibility', 'visible'); });
+    } else {
+      S.driverArc.setAttribute('visibility', 'hidden');
+      S.handles.forEach(function (h) { h.setAttribute('visibility', 'hidden'); });
+    }
+    // 单独的杆长调节手柄：圆点位于每根杆件中部，视觉上区别于铰点。
+    S.lengthGrips.forEach(function (grip,i) {
+      if(!vis){grip.setAttribute('visibility','hidden');S.lengthHitZones[i].setAttribute('visibility','hidden');return;}
+      var a=toScreen(J[i]),b=toScreen(J[(i+1)%4]);
+      grip.setAttribute('cx',(a.x+b.x)/2);grip.setAttribute('cy',(a.y+b.y)/2);
+      S.lengthHitZones[i].setAttribute('cx',(a.x+b.x)/2);S.lengthHitZones[i].setAttribute('cy',(a.y+b.y)/2);
+      grip.setAttribute('visibility','visible');S.lengthHitZones[i].setAttribute('visibility','visible');
+      grip.setAttribute('r',st.lengthDragging&&st.lengthDragging.link===i?11:8);
+    });
+
+    // 变点闪烁
+    var fl = st.flash, on = fl && now < fl.until && vis;
+    var op = on ? (0.35 + 0.65 * Math.abs(Math.sin((now - fl.start) / 160))) : 0;
+    S.halo.forEach(function (h) { h.setAttribute('opacity', 0); });
+    S.collinear.setAttribute('opacity', 0);
+    if (on) {
+      if (fl.kind === 'coincident') {
+        var hp = toScreen(J[fl.fixed]);
+        S.halo[0].setAttribute('cx', hp.x); S.halo[0].setAttribute('cy', hp.y); S.halo[0].setAttribute('opacity', op);
+      } else {
+        // 四杆共线：画出共线的那条直线
+        var xs = J.map(toScreen), ext = { a: xs[0], b: xs[1] }, best = 0;
+        for (var p1 = 0; p1 < 4; p1++) for (var p2 = p1 + 1; p2 < 4; p2++) { var dd2 = Math.hypot(xs[p1].x - xs[p2].x, xs[p1].y - xs[p2].y); if (dd2 > best) { best = dd2; ext = { a: xs[p1], b: xs[p2] }; } }
+        S.collinear.setAttribute('x1', ext.a.x); S.collinear.setAttribute('y1', ext.a.y); S.collinear.setAttribute('x2', ext.b.x); S.collinear.setAttribute('y2', ext.b.y);
+        S.collinear.setAttribute('opacity', op);
+      }
+    }
+
+    // 不能装配 / 只能拉直
+    if (!vis) {
+      var c = st.cls, mid = toScreen({ x: r0 / 2, y: 0 });
+      S.msg.setAttribute('x', W / 2); S.msg.setAttribute('y', Math.max(30, mid.y - 70));
+      S.msg.textContent = c.type === 'rigid' ? '只能拉成一条直线，不能运动' : '这组杆长连不成闭合的四杆机构';
+      S.msg2.setAttribute('x', W / 2); S.msg2.setAttribute('y', Math.max(52, mid.y - 46));
+      S.msg2.textContent = '';
+    } else { S.msg.textContent = ''; S.msg2.textContent = ''; }
+  }
+
+  /* ================= 简洁观察：不主动公布整周/摆动答案 ================= */
+  function sideAngle(side,J) {
+    var t=F.topology(st.frame),piv=J[side==='left'?t.leftPivot:t.rightPivot],
+      mov=J[side==='left'?t.leftMoving:t.rightMoving];
+    var a=Math.atan2(mov.y-piv.y,mov.x-piv.x);
+    return normA(side==='left'?a:Math.PI-a)/DEG;
+  }
+  function renderReadouts() {} // 不再生成学生端结论卡片
+  function updateLiveNumbers() {
+    if(!st.m || st.angleBusy)return;
+    var a=Math.round(sideAngle(st.driver,st.m.cfg.joints))%360;
+    $('angle').value=a;$('angleOut').textContent=a+'°';
+  }
+  function setNotice(kind,msg,sticky) {
+    // 仅计算失败才做必要的就近提示；不显示教学答案或临界概念长段说明。
+    if(kind==='error')$('lenHint').textContent=String(msg).replace(/<[^>]*>/g,'').slice(0,90);
+  }
+  function renderNotice() {}
+
+  /* ================= 控制区 ================= */
+  function buildControls() {
+    var box = $('lengths');
+    var cb = $('ctlBoot'); if (cb && cb.parentNode) cb.parentNode.removeChild(cb); // 先移除“加载中”占位，再生成四行控件
+    LN.forEach(function (name, i) {
+      var row = document.createElement('div');
+      row.className = 'len'; row.style.setProperty('--c', COLORS[i]);
+      row.innerHTML = '<span class="tag"><i></i>' + name + '</span>' +
+        '<input type="range" min="' + LMIN + '" max="' + LMAX + '" step="1" aria-label="杆 ' + name + ' 长度">' +
+        '<input type="number" min="' + LMIN + '" max="' + LMAX + '" step="0.5" inputmode="decimal" aria-label="杆 ' + name + ' 长度（mm）">';
+      box.appendChild(row);
+      var rng = row.querySelector('input[type=range]'), num = row.querySelector('input[type=number]');
+      // 拖动过程中只更新画面；松手（change）时记录一次。少数旧内核松手不触发 change，用松手事件 / 停顿兜底。
+      rng.addEventListener('input', function () {
+        setLength(i, +rng.value);
+        if (!sliderActive[i]) scheduleRodCommit(i, 'slider', 1500); // 键盘等非指针输入
+      });
+      rng.addEventListener('change', function () { sliderActive[i] = false; commitRod(i, 'slider'); });
+      ['pointerdown', 'touchstart', 'mousedown'].forEach(function (n) { rng.addEventListener(n, function () { sliderActive[i] = true; if (rodTimers[i]) { clearTimeout(rodTimers[i].t); delete rodTimers[i]; } }); });
+      ['pointerup', 'touchend', 'touchcancel', 'mouseup'].forEach(function (n) {
+        window.addEventListener(n, function () { if (sliderActive[i]) { sliderActive[i] = false; scheduleRodCommit(i, 'slider', 120); } });
+      });
+      num.addEventListener('input', function () { tryNumber(i, num, false); });
+      num.addEventListener('change', function () { tryNumber(i, num, true); commitRod(i, 'number'); }); // 非法输入不会改动 st.L；只记录真正生效的数值
+    });
+    var fs = $('frameSeg');
+    LN.forEach(function (name, k) {
+      var b = document.createElement('button');
+      b.type = 'button'; b.setAttribute('role', 'radio'); b.style.setProperty('--c', COLORS[k]);
+      b.innerHTML = '<i></i>' + name; b.onclick = function () { setFrame(k); };
+      fs.appendChild(b);
+    });
+    var ds = $('driverSeg');
+    ['left', 'right'].forEach(function (side) {
+      var b = document.createElement('button');
+      b.type = 'button'; b.setAttribute('role', 'radio'); b.dataset.side = side;
+      b.onclick = function () { setDriver(side); };
+      ds.appendChild(b);
+    });
+    document.querySelectorAll('[data-preset]').forEach(function (b) { b.onclick = function () { applyPreset(b.dataset.preset); }; });
+    $('playBtn').onclick = function () { var before=st.playing; setPlaying(!st.playing); rec('play_toggled',{from:before,to:st.playing}); };
+    $('resetBtn').onclick = reset;
+    var prevSpeed=st.speed;
+    $('speed').oninput = function () { st.speed = +this.value; $('speedOut').textContent = st.speed + '°/s'; };
+    $('speed').addEventListener('change',function(){if(prevSpeed!==st.speed){rec('speed_changed',{from:prevSpeed,to:st.speed});prevSpeed=st.speed;}});
+
+    var ang = $('angle');
+    ['pointerdown', 'touchstart', 'mousedown'].forEach(function (n) { ang.addEventListener(n, function () { st.angleBusy = true; }); });
+    ang.addEventListener('focus', function () { st.angleBusy = true; });
+    ang.addEventListener('blur', function () { st.angleBusy = false; });
+    ['pointerup', 'touchend', 'mouseup'].forEach(function (n) { window.addEventListener(n, function () { if (document.activeElement !== ang) st.angleBusy = false; }); });
+    var angleStart=null;
+    ang.addEventListener('input', function () {
+      if (!st.m) return;
+      if(angleStart===null) angleStart=Math.round(sideAngle(st.driver,st.m.cfg.joints));
+      st.angleBusy = true; setPlaying(false);
+      var phi = +ang.value * DEG, target = st.driver === 'left' ? phi : Math.PI - phi;
+      handleEvents(F.dragTo(st.m, target), performance.now()); remember();
+      $('angleOut').textContent = Math.round(sideAngle(st.driver, st.m.cfg.joints)) % 360 + '°';
+    });
+    ang.addEventListener('change',function(){
+      var a0=angleStart;angleStart=null;
+      if(a0!==null && a0!==+ang.value)rec('manual_angle_changed',{from_degrees:a0,to_degrees:+ang.value});
+    });
+    $('branchBtn').onclick = cycleBranch;
+
+    $('showReach').onchange = function () { emit('toggleReach', { on: this.checked }); rec('reachability_toggled', { on: this.checked }); };
+
+  }
+  function tryNumber(i, num, commit) {
+    var v = parseFloat(num.value);
+    if (!isFinite(v) || v < LMIN || v > LMAX) {
+      num.classList.add('bad');
+      if (commit) $('lenHint').textContent = LN[i] + ' 的长度请输入 ' + LMIN + '～' + LMAX + ' 之间的数。';
+      return;
+    }
+    num.classList.remove('bad');
+    setLength(i, Math.round(v * 10) / 10, true);
+  }
+  function setLength(i, v, fromNumber, silent) {
+    if (st.L[i] === v) return;
+    st.L[i] = v; rebuild({}); if (!fromNumber) syncLengthInputs(); else syncLengthInputs(i);
+    if (!silent) emit('length', { link: LN[i], value: v, lengths: st.L.slice() });
+  }
+  function syncLengthInputs(skipNum) {
+    var rows = $('lengths').querySelectorAll('.len');
+    for (var i = 0; i < 4; i++) {
+      rows[i].querySelector('input[type=range]').value = Math.round(st.L[i]);
+      if (skipNum !== i) { var n = rows[i].querySelector('input[type=number]'); n.value = st.L[i]; n.classList.remove('bad'); }
+    }
+  }
+  function renderControls() {
+    var t = F.topology(st.frame);
+    $('frameSeg').querySelectorAll('button').forEach(function (b, k) { b.setAttribute('aria-checked', k === st.frame); });
+    $('driverSeg').querySelectorAll('button').forEach(function (b) {
+      var side = b.dataset.side, li = side === 'left' ? t.leftLink : t.rightLink;
+      b.style.setProperty('--c', COLORS[li]);
+      b.innerHTML = '<i></i>' + LN[li] + ' <small>' + (side === 'left' ? '左连架杆' : '右连架杆') + '</small>';
+      b.setAttribute('aria-checked', st.driver === side); b.disabled = !st.m;
+    });
+    // 就近提示：只说事实，不打断操作
+    var s = st.stats, hint = '';
+    if (st.cls.type === 'none') {
+      var li = s.longest[0];
+      hint = '最长杆 ' + LN[li] + ' = ' + fmt(s.l) + '，不小于其余三杆之和 ' + fmt(s.S - s.l) + '：杆长无法装配成非退化的铰链四杆机构。';
+    } else if (st.cls.type === 'rigid') {
+      hint = '最长杆恰好等于其余三杆之和 ' + fmt(s.S - s.l) + '：只能拉成一条直线，不能构成能运动的四杆机构。';
+    }
+    $('lenHint').textContent = hint;
+    $('playBtn').disabled = !st.m; $('angle').disabled = !st.m; $('branchBtn').disabled = !st.m;
+    $('playBtn').textContent = st.playing ? '暂停' : '播放';
+  }
+
+  /* ================= 交互动作 ================= */
+  function setPlaying(p) { st.playing = !!p && !!st.m; $('playBtn').textContent = st.playing ? '暂停' : '播放'; emit(st.playing ? 'play' : 'pause', {}); }
+  function setFrame(k) {
+    if (k === st.frame) return;
+    var fromFrame = st.frame;
+    var oldJ = st.m && st.m.ok ? st.m.cfg.joints : null, oldIn = st.g ? st.g.inLink : null, t = F.topology(k);
+    st.frame = k;
+    st.driver = oldIn === t.rightLink ? 'right' : 'left';
+    if (oldJ) {
+      var rf = F.reframeJoints(oldJ, k);
+      // 过渡期间显示坐标 = R(angle·(1−u))·J_new + origin·(1−u)：u=0 时与旧画面完全重合，取景中心无需改动
+      st.tween = reduceMotion ? null : { angle: F.wrapPi(rf.angle), origin: rf.origin, start: performance.now(), dur: 800 };
+      rebuild({ joints: rf.joints });
+    } else rebuild({ keepPose: false });
+    emit('frame', { frame: LN[k], lengths: st.L.slice() });
+    rec('frame_changed', { from: LN[fromFrame], to: LN[k] });
+  }
+  function setDriver(side) {
+    if (side === st.driver || !st.m) return;
+    var J = st.m.cfg.joints;
+    var fromDriver=st.driver;
+    st.driver = side; rebuild({ joints: J });
+    emit('driver', { link: LN[st.g.inLink] });
+    rec('driver_changed',{from:fromDriver,to:side});
+  }
+  function cycleBranch() {
+    var m = st.m; if (!m) return;
+    var r = m.range, nIv = r.type === 'two-intervals' ? 2 : 1, list = [];
+    for (var iv = 0; iv < nIv; iv++) { list.push({ iv: iv, sg: 1 }); list.push({ iv: iv, sg: -1 }); }
+    var cur = 0;
+    list.forEach(function (o, i) { if (o.iv === m.iv && o.sg === m.sigma) cur = i; });
+    var nx = list[(cur + 1) % list.length], th = m.theta;
+    if (nx.iv !== m.iv) th = -th; // 另一段摆动区间与当前区间关于机架线对称
+    m.sigma = nx.sg; F.placeAt(m, th); remember();
+    st.flash = null; renderNotice();
+    emit('branch', { sigma: m.sigma, interval: m.iv });
+    rec('branch_changed',{sigma:m.sigma,interval:m.iv});
+  }
+  function applyPreset(key) {
+    flushPendingRods();
+    var beforeL = stateForRecord().lengths;
+    st.L = PRESETS[key].slice(); st.lastTheta = null; st.lastSigma = 1; st.dir = 1; st.notice = null; st.tween = null;
+    $('lenHint').textContent = '';
+    syncLengthInputs(); rebuild({ keepPose: false, snapView: true });
+    emit('preset', { key: key, lengths: st.L.slice() });
+    resyncCommitted();
+    rec('preset_applied', { preset: key, before_lengths: beforeL });
+  }
+  function reset() {
+    flushPendingRods();
+    var before = stateForRecord(), reachWasOn = $('showReach').checked;
+    st.L = DEFAULTS.L.slice(); st.frame = DEFAULTS.frame; st.driver = DEFAULTS.driver; st.speed = DEFAULTS.speed;
+    st.lastTheta = null; st.lastSigma = 1; st.dir = 1; st.notice = null; st.tween = null;
+    $('speed').value = st.speed; $('speedOut').textContent = st.speed + '°/s'; $('showReach').checked = false;
+    $('lenHint').textContent = '';
+    syncLengthInputs(); rebuild({ keepPose: false, snapView: true }); setPlaying(!reduceMotion);
+    emit('reset', {});
+    resyncCommitted();
+    rec('parameters_reset', { before_frame: before.frame, before_lengths: before.lengths, reach_was_on: reachWasOn });
+  }
+
+  function handleEvents(ev, now) {
+    ev.forEach(function (e) {
+      if (e.type === 'critical') {
+        st.holdUntil = now + 650;
+        st.flash = { start: now, until: now + 1600, kind: e.kind, fixed: e.fixed };
+        var what = e.kind === 'coincident' ? '铰点 ' + e.movingName + ' 与 ' + e.fixedName + ' 重合' : '四根杆共线';
+        // 变点只以画面短暂标记，不自动弹出理论结论。
+        emit('critical', { kind: e.kind });
+      } else if (e.type === 'stall') {
+        setPlaying(false);
+        setNotice('error', '运动求解异常，已暂停，请重新调整参数。', true);
+      }
+    });
+  }
+
+  /* ================= 图形交互：铰点调角，杆件中点修改设计杆长 ================= */
+  function svgPoint(evt) {
+    var r=svg.getBoundingClientRect();
+    return {x:(evt.clientX-r.left)*st.W/r.width,y:(evt.clientY-r.top)*st.H/r.height};
+  }
+  function onDown(evt){
+    if(!st.m || st.tween)return;
+    var q=svgPoint(evt),J=st.m.cfg.joints;
+    var grip=evt.target && evt.target.closest && evt.target.closest('[data-length-grip]');
+    if(grip){
+      var li=+grip.getAttribute('data-length-grip');
+      var a=toScreen(J[li]),b=toScreen(J[(li+1)%4]);
+      var vx=b.x-a.x,vy=b.y-a.y,n=Math.hypot(vx,vy);
+      if(n<1)return;
+      evt.preventDefault();setPlaying(false);
+      st.lengthDragging={link:li,start:q,original:st.L[li],ux:vx/n,uy:vy/n,
+        changed:false,pointerId:evt.pointerId,scale:st.view.s};
+      try{svg.setPointerCapture(evt.pointerId);}catch(e){}
+      return;
+    }
+    var t=F.topology(st.frame),best=null,bd=25;
+    [['left',t.leftMoving],['right',t.rightMoving]].forEach(function(it){
+      var s=toScreen(J[it[1]]),d=Math.hypot(s.x-q.x,s.y-q.y);
+      if(d<bd){bd=d;best=it[0];}
+    });
+    if(!best)return;
+    evt.preventDefault();if(best!==st.driver)setDriver(best);
+    setPlaying(false);st.dragging=true;
+    try{svg.setPointerCapture(evt.pointerId);}catch(e){}
+  }
+  function onMove(evt){
+    if(st.lengthDragging){
+      var ld=st.lengthDragging,q=svgPoint(evt),dx=q.x-ld.start.x,dy=q.y-ld.start.y;
+      // 投影到选中杆件的初始轴向，约 2 倍对应中点相对端点的长度位移。
+      var delta=2*(dx*ld.ux+dy*ld.uy)/Math.max(1e-6,ld.scale);
+      var value=Math.max(LMIN,Math.min(LMAX,Math.round((ld.original+delta)*2)/2));
+      if(st.L[ld.link]!==value){
+        setLength(ld.link,value,false,true);ld.changed=true;
+      }
+      return;
+    }
+    if(!st.dragging || !st.m)return;
+    var q=svgPoint(evt),p=toModel(q.x,q.y),g=st.g;
+    var target=Math.atan2(p.y-g.Pin.y,p.x-g.Pin.x);
+    handleEvents(F.dragTo(st.m,target),performance.now());remember();
+  }
+  function endDrag(){
+    if(st.lengthDragging){
+      var ld=st.lengthDragging;st.lengthDragging=null;
+      refit(false);
+      if(ld.changed){emit('length',{link:LN[ld.link],value:st.L[ld.link],lengths:st.L.slice(),source:'diagram'});commitRod(ld.link,'diagram');}
+    }
+    if(st.dragging){st.dragging=false;emit('drag',{});}
+  }
+  if(window.PointerEvent){
+    svg.addEventListener('pointerdown',onDown);
+    svg.addEventListener('pointermove',onMove);
+    svg.addEventListener('pointerup',endDrag);
+    svg.addEventListener('pointercancel',endDrag);
+  }else{
+    // 旧版安卓 WebView（如 X5 内核）没有 Pointer Events：用触摸 / 鼠标事件代替
+    var touchView=function(e){var t=(e.changedTouches&&e.changedTouches[0])||(e.touches&&e.touches[0]);
+      return {clientX:t.clientX,clientY:t.clientY,target:e.target,pointerId:0,preventDefault:function(){e.preventDefault();}};};
+    var passiveNo=false;try{var o=Object.defineProperty({},'passive',{get:function(){passiveNo={passive:false};return true;}});window.addEventListener('x',null,o);}catch(e){}
+    svg.addEventListener('touchstart',function(e){if(e.touches.length===1)onDown(touchView(e));},passiveNo);
+    svg.addEventListener('touchmove',function(e){if(st.dragging||st.lengthDragging){e.preventDefault();onMove(touchView(e));}},passiveNo);
+    svg.addEventListener('touchend',endDrag);
+    svg.addEventListener('touchcancel',endDrag);
+    svg.addEventListener('mousedown',onDown);
+    window.addEventListener('mousemove',function(e){if(st.dragging||st.lengthDragging)onMove(e);});
+    window.addEventListener('mouseup',endDrag);
+  }
+  window.addEventListener('blur',endDrag);
+
+  /* 课前自主探索版不显示或计算参考结论面板。 */
+  function renderRelation() {}
+
+  /* ================= 尺寸与主循环 ================= */
+  function resize() {
+    var r = $('stage').getBoundingClientRect();
+    // 布局尚未完成（宽或高为 0）时不覆盖已有尺寸，等待下一次 resize / 定时重测
+    if (!(r.width > 1 && r.height > 1)) { if (!svg.getAttribute('viewBox')) svg.setAttribute('viewBox', '0 0 ' + st.W + ' ' + st.H); return; }
+    st.W = Math.max(280, Math.round(r.width)); st.H = Math.max(200, Math.round(r.height));
+    svg.setAttribute('viewBox', '0 0 ' + st.W + ' ' + st.H);
+    refit('jump');
+  }
+  var last = performance.now(), lastRo = 0;
+  var loopErrors = 0;
+  function loop(now) {
+    requestAnimationFrame(loop); // 先排下一帧：某一帧出错不会让画面永久停住
+    if (typeof now !== 'number') now = performance.now();
+    try {
+      var dt = Math.min(0.05, Math.max(0, (now - last) / 1000)); last = now;
+      if (st.playing && st.m && st.m.ok && !st.dragging && now >= st.holdUntil) {
+        handleEvents(F.advance(st.m, st.speed * DEG * dt, { onLimit: 'bounce', maxSub: 0.5 * DEG }), now);
+        remember();
+      }
+      stepView(dt);
+      draw(now);
+      if (now - lastRo > 100) { updateLiveNumbers(); lastRo = now; if (st.notice && now > st.notice.until) renderNotice(); }
+    } catch (e) {
+      if (++loopErrors <= 3 && window.__diag) window.__diag('[绘制错误] ' + (e && e.message ? e.message : e));
+    }
+  }
+
+  try {
+    buildScene();
+    buildControls();
+    syncLengthInputs();
+    if (window.ResizeObserver) new ResizeObserver(resize).observe($('stage'));
+    window.addEventListener('resize', resize);
+    window.addEventListener('orientationchange', function () { setTimeout(resize, 300); });
+    resize();
+    rebuild({ keepPose: false, snapView: 'jump' });
+    setPlaying(st.playing);
+    var boot = $('bootMsg'); if (boot && boot.parentNode) boot.parentNode.removeChild(boot);
+    var cboot = $('ctlBoot'); if (cboot && cboot.parentNode) cboot.parentNode.removeChild(cboot);
+    window.__appStarted = true;
+    committedL = st.L.slice();
+    // 进入页面只创建匿名草稿；不会自动上传事件。
+    if (/[?&]debug=1/.test(location.search || '') && window.__diag) {
+      var sr = $('stage').getBoundingClientRect();
+      window.__diag('[诊断] 已启动；机构图区 ' + Math.round(sr.width) + '×' + Math.round(sr.height) + '；PointerEvent=' + !!window.PointerEvent +
+        '；记录=' + (window.OpRecorder && OpRecorder.ready ? JSON.stringify(OpRecorder.status()) : '未启用') + '\n' + navigator.userAgent);
+    }
+    // 部分 WebView 首次布局时容器尺寸还没确定，稍后再量一次
+    setTimeout(resize, 300); setTimeout(resize, 1000); setTimeout(resize, 2500);
+    requestAnimationFrame(loop);
+  } catch (e) {
+    if (window.__showBootError) window.__showBootError(e && e.message ? e.message : String(e));
+    throw e;
+  }
+})();
+
+</script>
+</body>
+</html>
