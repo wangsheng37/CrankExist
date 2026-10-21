@@ -235,18 +235,23 @@ body, .app, .layout, .stage-wrap, .reflection { overflow-anchor: none; }
 #assignmentStatus { min-height: 23px; }
 @media(max-width:780px) { .quiz-grid { grid-template-columns: 1fr; } }
 @media(max-width:440px) { .quiz-card .choice-line { grid-template-columns: 1fr 1fr; } }
+
+/* 课程版权与杆长不等式：仅提示比较关系，不泄露判断结果 */
+.top h1 .author { font-size: 12px; font-weight: 400; color: var(--muted); white-space: nowrap; letter-spacing: 0; }
+.top .formula-guide { grid-column: 2; margin: 5px 0 0; font-size: 15px; line-height: 1.65; color: var(--ink); }
+@media (max-width: 980px) { .top .formula-guide { grid-column: 1; margin-top: 7px; } }
+@media (max-width: 440px) { .top .formula-guide { font-size: 14px; } }
 </style>
 </head>
 <body>
 <div class="app">
   <header class="top">
-    <h1>曲柄存在条件探索</h1>
+    <h1>曲柄存在条件探索 <span class="author">by 王晟NUE</span></h1>
     <div class="goals">
       <p><b>问题 1</b>　四根杆长满足什么关系时，机构中可能有能整周转动的连架杆（曲柄）？</p>
       <p><b>问题 2</b>　杆长完全不变，只改选机架，为什么机构类型和曲柄情况会不同？</p>
     </div>
-    <p class="ways">可以这样探索：保持机架不变，改变杆长；保持杆长不变，改选机架；比较哪根连架杆能整周转动，尝试找出规律。</p>
-    <p class="privacy-note">本页仅在浏览器中暂存姓名、四组作答与有效探索记录，不联网上传；作业文件由你自行上传至教师提供的 WPS 表单。</p>
+    <p class="formula-guide">杆长关系：设 <b>s</b> 为最短杆、<b>l</b> 为最长杆，<b>p</b>、<b>q</b> 为其余两杆。比较 <b>s + l</b> 与 <b>p + q</b>，并结合机架位置判断机构类型。</p>
   </header>
 
   <main class="layout">
@@ -347,7 +352,6 @@ body, .app, .layout, .stage-wrap, .reflection { overflow-anchor: none; }
       <a class="btn wps-open" id="wpsFormLink" href="#" target="_blank" rel="noopener noreferrer" hidden>打开 WPS 作业收集表单</a>
     </div>
     <p id="assignmentStatus" class="submit-status" role="status" aria-live="polite"></p>
-    <p class="submit-footnote">导出的 JSON 包含完整有效操作记录和四题作答，内部内容经过压缩编码（不是加密）。请将该文件上传至教师指定的 WPS 表单；微信内无法下载时，可使用“复制编码后的 JSON”作为备用。</p>
     <details class="json-backup" id="jsonBackupPanel" hidden>
       <summary>显示编码后的作业数据（备用）</summary>
       <textarea id="jsonPreview" readonly rows="6" aria-label="编码后的 JSON 数据"></textarea>
